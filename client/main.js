@@ -31,7 +31,7 @@ setupDiscordSdk().then(() => {
   appendChannelName();
   
   // Chame a fila de batalha uma vez imediatamente para carregar
-  fetchBattleQueue(); 
+  //fetchBattleQueue(); 
 
 }).catch((err) => {
     console.error("Erro fatal no setup do SDK:", err);
