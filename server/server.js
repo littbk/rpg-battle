@@ -5,7 +5,7 @@ import cors from "cors"; // Adicionado para CORS
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
-import characterManager from "../../lib/managers/charManager.js";
+import characterManager from "./lib/charManager";
 
 dotenv.config({ path: "../.env" }); // OK, mas certifique-se de que .env tem as vars certas
 
