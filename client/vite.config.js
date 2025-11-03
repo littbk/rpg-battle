@@ -13,19 +13,19 @@ export default defineConfig({
     ],
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://rpg-battle-pi.vercel.app/',
         changeOrigin: true,
         secure: false,
       },
       '/.proxy': {
-        target: 'http://localhost:3001',
+        target: 'https://rpg-battle-pi.vercel.app/',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/\.proxy/, ''),
       },
     },
     cors: {
       origin: [
-        'https://dimension-cited-gmc-obviously.trycloudflare.com',
+        'https://rpg-battle-pi.vercel.app/',
       ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
