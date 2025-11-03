@@ -4,7 +4,7 @@ const charactersPath = path.resolve(__dirname, '../../data/character/');
 const profilesPath = path.resolve(__dirname, '../../data/profiles');
 const charGameDataPath = path.resolve(__dirname, '../../data/charGameData.json');
 const jsonfile = require('jsonfile');
-const Personagem = require('../classes/character.js');
+const Personagem = require('../classes/servercharmanager.js.js');
 
 // LER JSON PERSONAGEM
 async function readCharacterFile(filename) {
