@@ -1,3 +1,6 @@
+// Trigger deploy
+import API_BASE_URL from './apiClient.js';
+
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 
 import rocketLogo from '/rocket.png';
@@ -14,13 +17,6 @@ setupDiscordSdk().then(() => {
   console.log("Discord SDK is authenticated");
 
 });
-
-
-// A importação é direta, pois eles estão na mesma pasta
-import API_BASE_URL from 'rpg-battle/client/apiClient'
-
-
-console.log('A URL da API é:', API_BASE_URL);
 
 async function testApi() {
   try {
