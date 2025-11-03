@@ -1,10 +1,8 @@
 // Trigger deploy
 
 // --- LÓGICA DA API (CORRIGIDA) ---
-const PRODUCTION_URL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = import.meta.env.DEV 
-  ? ''  // Em dev, a "base" é vazia (usaremos caminhos relativos como /api/...)
-  : PRODUCTION_URL; // Em produção, a "base" é a URL completa
+// Sempre use caminhos relativos para fetches no client-side, pois o Discord proxy cuida do roteamento.
+const API_BASE_URL = '';  // Vazio para dev e prod: usa relativo como /api/...
 
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import rocketLogo from '/rocket.png';
@@ -19,7 +17,6 @@ let isSdkReady = false;
 const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
 console.log('env')
 console.log(import.meta.env.VITE_DISCORD_CLIENT_ID)
-
 
 // ⚠️ FIX 2: Chamando a inicialização do SDK APENAS UMA VEZ.
 setupDiscordSdk().then(() => {
@@ -41,22 +38,6 @@ setupDiscordSdk().then(() => {
     // TODO: Mostrar um erro para o usuário na interface
 });
 
-
-async function testApi() {
-  try {
-    // Note que estou usando a variável API_BASE_URL que definimos lá em cima
-    const response = await fetch(`${API_BASE_URL}/alguma-rota`);
-    const data = await response.json();
-    console.log(data);
-  } catch (err) {
-    console.error("Erro ao testar API:", err);
-  }
-}
-
-// Chamada de teste (opcional)
-// testApi();
-
-
 async function setupDiscordSdk() {
   await discordSdk.ready();
   console.log("Discord SDK is ready");
@@ -75,7 +56,7 @@ async function setupDiscordSdk() {
   });
 
   // Retrieve an access_token from your activity's server
-  // Note o uso do API_BASE_URL aqui (ou /api que o proxy pega)
+  // Usa caminho relativo: o proxy do Discord encaminha para o Vercel.
   const response = await fetch(`${API_BASE_URL}/api/token`, { // Ajuste esta rota se necessário
     method: "POST",
     headers: {
@@ -107,7 +88,7 @@ document.querySelector('#app').innerHTML = `
     <div id="turn-order-list">
       <p>Carregando fila de batalha...</p>
     </div>
-    <h3 id="channel-name"></h2>
+    <h3 id="channel-name"></h3>
   </div>
 `;
 
@@ -169,11 +150,12 @@ async function appendUserAvatar() {
   }).then((response) => response.json());
 
   // 2️⃣ Monta a URL do avatar
-  let avatarUrl
+  let avatarUrl;
   if (user.avatar) {
     avatarUrl = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=128`;
   } else {
-    const defaultAvatarIndex = user.discriminator % 5; 
+    // Discriminator pode ser 0 em contas novas, mas fallback para default
+    const defaultAvatarIndex = (user.discriminator || 0) % 5; 
     avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
   }
 
@@ -185,7 +167,6 @@ async function appendUserAvatar() {
   logoImg.style.borderRadius = '50%';
 }
 
-
 async function fetchBattleQueue() {
   const channelId = discordSdk.channelId;
   const turnOrderContainer = document.querySelector('#turn-order-list');
@@ -196,7 +177,7 @@ async function fetchBattleQueue() {
   }
 
   try {
-    // Usa a variável API_BASE_URL
+    // Usa caminho relativo: o proxy do Discord encaminha.
     const response = await fetch(`${API_BASE_URL}/api/get-battle-queue?channel=${channelId}`);
 
     if (!response.ok) {
@@ -205,8 +186,18 @@ async function fetchBattleQueue() {
     }
 
     const battleData = await response.json();
-    console.log(battleData)
-    const fila = JSON.parse(battleData.fila);
+    console.log('Dados da fila recebidos:', battleData);
+
+    // Verifica se fila é um array válido
+    let fila = [];
+    try {
+      fila = JSON.parse(battleData.fila);
+      if (!Array.isArray(fila)) throw new Error('Fila não é um array');
+    } catch (e) {
+      console.error('Erro ao parsear fila:', e);
+      throw new Error('Formato inválido da fila de batalha.');
+    }
+
     const jogadorAtual = battleData.jogadorAtual;
 
     if (jogadorAtual) {
@@ -242,7 +233,6 @@ async function fetchBattleQueue() {
     }
   }
 }
-
 
 // --- LOOP DE ATUALIZAÇÃO (POLLING) ---
 
