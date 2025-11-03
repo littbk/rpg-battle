@@ -4,9 +4,9 @@
   "description": "",
   "main": "server.js",
   "type": "module",
-  "scripts": {
-    "dev": "npm start"
-  },
+ "scripts": {
+  "build": "cd client && npm install && npm run build"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
