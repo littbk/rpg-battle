@@ -12,7 +12,11 @@ export default defineConfig({
     host: 'localhost',
     port: 5173,
     https: false,
-    
+    cors: true,
+    headers: {
+    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    'Cross-Origin-Embedder-Policy': 'unsafe-none',
+  },
     // Isto continua correto para permitir o acesso via Cloudflare Tunnel
     allowedHosts: [
       'dimension-cited-gmc-obviously.trycloudflare.com',

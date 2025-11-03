@@ -1,3 +1,4 @@
 # Ignorar dependências
 node_modules/
 dist/
+.vercel
