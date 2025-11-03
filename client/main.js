@@ -16,6 +16,23 @@ setupDiscordSdk().then(() => {
 });
 
 
+// A importação é direta, pois eles estão na mesma pasta
+import API_BASE_URL from 'rpg-battle/client/apiClient'
+
+
+console.log('A URL da API é:', API_BASE_URL);
+
+async function testApi() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/alguma-rota`);
+    const data = await response.json();
+    console.log(data);
+  } catch (err) {
+    console.error("Erro ao testar API:", err);
+  }
+}
+
+testApi();
 
 
 async function setupDiscordSdk() {
