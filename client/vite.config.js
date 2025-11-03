@@ -16,6 +16,9 @@ export default defineConfig({
     // Isto continua correto para permitir o acesso via Cloudflare Tunnel
     allowedHosts: [
       'dimension-cited-gmc-obviously.trycloudflare.com',
+       '.trycloudflare.com',
+       '.vercel.app',
+       'https://rpg-battle-psi.vercel.app/,'
     ],
 
     proxy: {
