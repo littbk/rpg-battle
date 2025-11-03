@@ -1,71 +1,57 @@
-// Trigger deploy
-
-// --- LÓGICA DA API ---
-// (Não há problema em deixar aqui por enquanto)
+// --- LÓGICA DA API (CORRIGIDA) ---
+// Esta é a lógica final que funciona localmente e em produção.
 const PRODUCTION_URL = import.meta.env.VITE_API_URL;
+
 const API_BASE_URL = import.meta.env.DEV 
-  ? '/api' 
-  : PRODUCTION_URL;
+  ? ''  // Em dev, a "base" é vazia (usaremos caminhos relativos como /api/...)
+  : PRODUCTION_URL; // Em produção, a "base" é a URL completa
 
-// ⚠️ FIX 1: Removido o 'export default API_BASE_URL;' 
-// Ele não tinha efeito aqui.
-
+// --- IMPORTAÇÕES ---
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import rocketLogo from '/rocket.png';
 import "./style.css";
 
 // --- VARIÁVEIS GLOBAIS ---
 let auth;
-// ⚠️ FIX 3: 'isSdkReady' deve começar como 'false'.
-// O loop só deve rodar DEPOIS que o SDK estiver pronto.
+// Deve começar como 'false'. O loop só roda DEPOIS que o SDK estiver pronto.
 let isSdkReady = false; 
 
+// Inicializa o SDK
 const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
-console.log('env')
-console.log(import.meta.env.VITE_DISCORD_CLIENT_ID)
+
+console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT_ID);
 
 
-// ⚠️ FIX 2: Chamando a inicialização do SDK APENAS UMA VEZ.
+// --- INICIALIZAÇÃO DA APLICAÇÃO ---
+// Chamamos a função de setup principal APENAS UMA VEZ.
 setupDiscordSdk().then(() => {
   console.log("Discord SDK está autenticado e pronto.");
   
   // Agora que está pronto, ativamos o loop de polling
   isSdkReady = true;
 
-  // ⚠️ FIX 4: Funções que só rodam UMA VEZ.
-  // Chame-as aqui, DEPOIS da autenticação, e não dentro do loop.
+  // Funções que só precisam rodar UMA VEZ (depois da autenticação)
   appendUserAvatar();
   appendChannelName();
   
-  // Chame a fila de batalha uma vez imediatamente para carregar
+  // Chame a fila de batalha uma vez imediatamente para carregar a UI
   fetchBattleQueue(); 
 
 }).catch((err) => {
     console.error("Erro fatal no setup do SDK:", err);
-    // TODO: Mostrar um erro para o usuário na interface
+    // Aqui você pode adicionar uma mensagem de erro na UI
+    document.querySelector('#app').innerHTML = `<p style="color:red;">Falha ao autenticar com o Discord. Por favor, tente recarregar a atividade.</p>`;
 });
 
 
-async function testApi() {
-  try {
-    // Note que estou usando a variável API_BASE_URL que definimos lá em cima
-    const response = await fetch(`${API_BASE_URL}/alguma-rota`);
-    const data = await response.json();
-    console.log(data);
-  } catch (err) {
-    console.error("Erro ao testar API:", err);
-  }
-}
-
-// Chamada de teste (opcional)
-// testApi();
-
+// --- FUNÇÕES PRINCIPAIS ---
 
 async function setupDiscordSdk() {
+  // Espera o SDK estar pronto para comunicar com o cliente Discord
   await discordSdk.ready();
   console.log("Discord SDK is ready");
 
-  // Authorize with Discord Client
+  // Autoriza com o cliente Discord
   const { code } = await discordSdk.commands.authorize({
     client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
     response_type: "code",
@@ -74,13 +60,11 @@ async function setupDiscordSdk() {
     scope: [
       "identify",
       "guilds",
-    // "applications.commands" // Geralmente não é necessário para Activities
     ],
   });
 
-  // Retrieve an access_token from your activity's server
-  // Note o uso do API_BASE_URL aqui (ou /api que o proxy pega)
-  const response = await fetch(`${API_BASE_URL}/api/token`, { // Ajuste esta rota se necessário
+  // Busca o access_token do nosso backend (usando a URL de API correta)
+  const response = await fetch(`${API_BASE_URL}/api/token`, { 
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -92,7 +76,7 @@ async function setupDiscordSdk() {
 
   const { access_token } = await response.json();
 
-  // Authenticate with Discord client (using the access_token)
+  // Autentica com o cliente Discord (usando o access_token)
   auth = await discordSdk.commands.authenticate({
     access_token,
   });
@@ -102,6 +86,9 @@ async function setupDiscordSdk() {
   }
 }
 
+// --- FUNÇÕES DE ATUALIZAÇÃO DA UI ---
+
+// Injeta o HTML base na página
 document.querySelector('#app').innerHTML = `
   <div>
     <img src="${rocketLogo}" class="logo" alt="Discord" />
@@ -116,7 +103,7 @@ document.querySelector('#app').innerHTML = `
 `;
 
 /**
- * Puxa o nome do canal de voz atual via Discord SDK RPC e atualiza a UI.
+ * Busca e exibe o nome do canal de voz atual.
  */
 async function appendChannelName() {
     const app = document.querySelector('#channel-name');
@@ -130,8 +117,6 @@ async function appendChannelName() {
             const channel = await discordSdk.commands.getChannel({
                 channel_id: discordSdk.channelId
             });
-
-            console.log('Channel Data Received:', channel);
 
             if (channel && channel.name) {
                 activityChannelName = channel.name;
@@ -148,7 +133,7 @@ async function appendChannelName() {
         activityChannelName = "Fora de Contexto de Atividade";
     }
 
-    const textTagString = `Activity Channel: "${activityChannelName}"`;
+    const textTagString = `Canal: "${activityChannelName}"`;
     const textTag = document.createElement('p');
     textTag.textContent = textTagString;
     
@@ -157,14 +142,18 @@ async function appendChannelName() {
     }
 }
 
+/**
+ * Busca o avatar do usuário e o exibe no lugar do logo.
+ */
 async function appendUserAvatar() {
   const logoImg = document.querySelector('img.logo');
-  if (!logoImg || !auth) { // Adicionado verificação de !auth
+  // Garante que a autenticação (auth) aconteceu antes de rodar
+  if (!logoImg || !auth) { 
       console.warn("appendUserAvatar chamado sem autenticação ou sem <img>");
       return; 
   }
 
-  // 1️⃣ Busca os dados do usuário autenticado
+  // Busca os dados do usuário autenticado
   const user = await fetch(`https://discord.com/api/v10/users/@me`, {
     headers: {
       Authorization: `Bearer ${auth.access_token}`,
@@ -172,16 +161,17 @@ async function appendUserAvatar() {
     },
   }).then((response) => response.json());
 
-  // 2️⃣ Monta a URL do avatar
-  let avatarUrl
+  // Monta a URL do avatar
+  let avatarUrl;
   if (user.avatar) {
     avatarUrl = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=128`;
   } else {
+    // Usa o avatar padrão para contas sem avatar customizado
     const defaultAvatarIndex = user.discriminator % 5; 
     avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
   }
 
-  // 3️⃣ Substitui a imagem do logo pelo avatar do usuário
+  // Substitui a imagem do logo pelo avatar do usuário
   logoImg.src = avatarUrl;
   logoImg.alt = `${user.username} avatar`;
   logoImg.width = 128;
@@ -189,18 +179,21 @@ async function appendUserAvatar() {
   logoImg.style.borderRadius = '50%';
 }
 
-
+/**
+ * Busca os dados da fila de batalha da nossa API e atualiza a UI.
+ */
 async function fetchBattleQueue() {
   const channelId = discordSdk.channelId;
   const turnOrderContainer = document.querySelector('#turn-order-list');
 
+  // Não faz nada se o SDK ainda não nos deu o ID do canal
   if (!channelId) { 
     if (turnOrderContainer) turnOrderContainer.innerHTML = "<p>ID do Canal não encontrado.</p>";
     return;
   }
 
   try {
-    // Usa a variável API_BASE_URL
+    // Busca na nossa API (usando a URL de API correta)
     const response = await fetch(`${API_BASE_URL}/api/get-battle-queue?channel=${channelId}`);
 
     if (!response.ok) {
@@ -209,7 +202,9 @@ async function fetchBattleQueue() {
     }
 
     const battleData = await response.json();
-    console.log(battleData)
+    console.log(battleData); // Ótimo para debug
+    
+    // Processa a fila
     const fila = JSON.parse(battleData.fila);
     const jogadorAtual = battleData.jogadorAtual;
 
@@ -224,6 +219,7 @@ async function fetchBattleQueue() {
       }
     }
     
+    // Filtra, ordena e exibe
     const lutadoresAtivos = fila.filter(p => p.ativo === true);
     lutadoresAtivos.sort((a, b) => b.step - a.step);
 
@@ -247,13 +243,27 @@ async function fetchBattleQueue() {
   }
 }
 
-
 // --- LOOP DE ATUALIZAÇÃO (POLLING) ---
-
-// ⚠️ FIX 4: O loop agora só cuida da fila de batalha.
+// Este loop só atualiza a fila de batalha, que é a única coisa
+// que precisa de atualização constante.
 setInterval(() => {
   // Só roda a função se o SDK estiver pronto (isSdkReady é true)
   if (isSdkReady) {
     fetchBattleQueue();
   }
 }, 2000); // 2000ms = 2 segundos.
+
+
+// --- FUNÇÃO DE TESTE (Opcional) ---
+async function testApi() {
+  try {
+    // Usa a URL de API correta
+    const response = await fetch(`${API_BASE_URL}/api/alguma-rota`);
+    const data = await response.json();
+    console.log("Resultado do Teste de API:", data);
+  } catch (err) {
+    console.error("Erro ao testar API:", err);
+  }
+}
+// Descomente a linha abaixo se quiser testar sua rota /api/alguma-rota
+// testApi();
