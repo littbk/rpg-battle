@@ -1,13 +1,11 @@
 // --- LÓGICA DA API (CORRIGIDA) ---
 // Esta é a lógica correta que decide qual API chamar.
-const PRODUCTION_URL = import.meta.env.VITE_API_URL;
+const isDev = import.meta.env.DEV;
+const PRODUCTION_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, ''); // remove barra final se existir
+const API_BASE_URL = isDev ? '' : PRODUCTION_URL;
 
-// ⚠️ CORREÇÃO 1: A sua sintaxe aqui estava errada.
-// Esta é a lógica correta: 'import.meta.env.DEV' é a condição.
-const API_BASE_URL = ''; // SEMPRE Vazio
-
-console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}. API Base: ${API_BASE_URL || 'Relativa (mesmo domínio)'}`);
-
+console.log(`[INIT] Modo de ${isDev ? 'Desenvolvimento' : 'Produção'}.`);
+console.log(`[INIT] API Base: ${API_BASE_URL || 'Relativa (mesmo domínio)'}`);
 
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import rocketLogo from '/rocket.png';
@@ -145,7 +143,6 @@ async function appendUserAvatar() {
   logoImg.style.borderRadius = '50%';
 }
 
-
 async function fetchBattleQueue() {
   const channelId = discordSdk.channelId;
   const turnOrderContainer = document.querySelector('#turn-order-list');
@@ -157,63 +154,59 @@ async function fetchBattleQueue() {
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/get-battle-queue?channel=${channelId}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erro do servidor: ${response.status} - ${errorText}`);
-    }
+    if (!response.ok) throw new Error(`Erro do servidor: ${response.status} - ${await response.text()}`);
 
     const battleData = await response.json();
     console.log('Dados da fila recebidos:', battleData);
 
-    // ⚠️ CORREÇÃO 2: O BUG DO JSON.PARSE
-    // Com PostgreSQL (JSONB), o battleData.fila JÁ É UM OBJETO (ou array), não uma string.
-    // Remover o JSON.parse() e o bloco try/catch desnecessário corrige o erro.
-    let fila = battleData.fila;
-    
-    // Garante que a 'fila' é um array para as funções .filter e .sort
-    if (!Array.isArray(fila)) {
-        // Se a fila for um objeto {} ou null/undefined, trata como um array vazio
-        console.warn("Os dados da 'fila' não vieram como um array. A ser tratado como vazio.");
-        fila = [];
+    // --- 🔧 Correção universal do formato ---
+    let fila = [];
+
+    // 1️⃣ Se já existir um array 'fila'
+    if (Array.isArray(battleData.fila)) {
+      fila = battleData.fila;
     }
+    // 2️⃣ Se vier um objeto 'LutadoresMap' (ex: {"0": {...}, "1": {...}})
+    else if (battleData.LutadoresMap && typeof battleData.LutadoresMap === 'object') {
+      fila = Object.values(battleData.LutadoresMap);
+    }
+    // 3️⃣ Se vier um único objeto
+    else if (battleData && typeof battleData === 'object') {
+      console.warn("Estrutura inesperada, tentando adaptar:", battleData);
+      fila = Object.values(battleData);
+    }
+
+    if (!Array.isArray(fila)) fila = [];
 
     const jogadorAtual = battleData.jogadorAtual;
 
+    // Reordena se o jogadorAtual existir
     if (jogadorAtual) {
-      const indiceDoJogador = fila.findIndex(jogador => 
-          jogador.nome === jogadorAtual
-      );
-      if (indiceDoJogador !== -1) {
-          const [jogadorPrioritario] = fila.splice(indiceDoJogador, 1);
-          jogadorPrioritario.step = 9999;
-          fila.unshift(jogadorPrioritario);
+      const idx = fila.findIndex(j => j.nome === jogadorAtual);
+      if (idx !== -1) {
+        const [prioritario] = fila.splice(idx, 1);
+        prioritario.step = 9999;
+        fila.unshift(prioritario);
       }
     }
-    
-    const lutadoresAtivos = fila.filter(p => p.ativo === true);
-    lutadoresAtivos.sort((a, b) => b.step - a.step);
 
-    if (lutadoresAtivos.length > 0) {
-      // shift() agora é seguro porque sabemos que lutadoresAtivos é um array
-      const lutadorPrioritario = lutadoresAtivos.shift(); 
-      const primeiroItemHtml = `<li><strong class="prioritario">${lutadorPrioritario.nome}</strong> • ${lutadorPrioritario.step}</li>`;
-      const restanteItensHtml = lutadoresAtivos.map(player => 
-        `<li><strong>${player.nome}</strong> • ${player.step}</li>`
-      ).join('');
-      const htmlList = `<ol>${primeiroItemHtml}${restanteItensHtml}</ol>`;
-      turnOrderContainer.innerHTML = htmlList;
+    const ativos = fila.filter(p => p?.ativo);
+    ativos.sort((a, b) => b.step - a.step);
+
+    if (ativos.length > 0) {
+      const [prioritario] = ativos;
+      const primeiroItemHtml = `<li><strong class="prioritario">${prioritario.nome}</strong> • ${prioritario.step}</li>`;
+      const restante = ativos.slice(1).map(p => `<li><strong>${p.nome}</strong> • ${p.step}</li>`).join('');
+      turnOrderContainer.innerHTML = `<ol>${primeiroItemHtml}${restante}</ol>`;
     } else {
       turnOrderContainer.innerHTML = "<p>Nenhum lutador ativo na fila.</p>";
     }
-
   } catch (error) {
     console.error("Falha ao buscar fila de batalha:", error);
-    if (turnOrderContainer) {
-      turnOrderContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
-    }
+    if (turnOrderContainer) turnOrderContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
   }
 }
+
 
 // --- LOOP DE ATUALIZAÇÃO (POLLING) ---
 setInterval(() => {
