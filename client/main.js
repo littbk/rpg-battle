@@ -15,7 +15,7 @@ import "./style.css";
 
 // --- VARIÁVEIS GLOBAIS ---
 let auth;
-let isSdkReady = false; 
+let isSdkReady = false;
 
 const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
 console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT_ID);
@@ -24,20 +24,20 @@ console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT
 // --- INICIALIZAÇÃO DA APLICAÇÃO ---
 setupDiscordSdk().then(() => {
   console.log("Discord SDK está autenticado e pronto.");
-  
+
   isSdkReady = true;
 
   // Funções que só rodam UMA VEZ
   appendUserAvatar();
   appendChannelName();
-  
+
   // Chame a fila uma vez imediatamente
-  fetchBattleQueue(); 
+  fetchBattleQueue();
 
 }).catch((err) => {
-    console.error("Erro fatal no setup do SDK:", err);
-    // Esta mensagem de erro personalizada é ótima!
-    document.querySelector('#app').innerHTML = `<p style="color:red; max-width: 400px;">Erro fatal no setup do SDK. Verifique o console (Ctrl+Shift+I).<br/><br/>Causas comuns:<br/>1. API (Servidor) está offline.<br/>2.<br/>3. Erro de CORS/CSP (Verifique as Configurações da Atividade no Discord).</p>`;
+  console.error("Erro fatal no setup do SDK:", err);
+  // Esta mensagem de erro personalizada é ótima!
+  document.querySelector('#app').innerHTML = `<p style="color:red; max-width: 400px;">Erro fatal no setup do SDK. Verifique o console (Ctrl+Shift+I).<br/><br/>Causas comuns:<br/>1. API (Servidor) está offline.<br/>2.<br/>3. Erro de CORS/CSP (Verifique as Configurações da Atividade no Discord).</p>`;
 });
 
 
@@ -50,13 +50,13 @@ async function setupDiscordSdk() {
     response_type: "code",
     state: "",
     prompt: "none",
-    scope: [ "identify", "guilds" ],
+    scope: ["identify", "guilds"],
   });
 
   console.log("Código de autorização recebido:", code);
 
   // Busca o access_token do nosso backend (Render ou local)
-  const response = await fetch(`${API_BASE_URL}/api/token`, { 
+  const response = await fetch(`${API_BASE_URL}/api/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code }),
@@ -98,18 +98,18 @@ document.querySelector('#app').innerHTML = `
 async function appendChannelName() {
   const app = document.querySelector('#channel-name');
   if (app) app.innerHTML = '<p>Carregando nome do canal...</p>';
-  
+
   let activityChannelName = 'Unknown';
   if (discordSdk.channelId && discordSdk.guildId) {
-      try {
-          const channel = await discordSdk.commands.getChannel({ channel_id: discordSdk.channelId });
-          if (channel && channel.name) activityChannelName = channel.name;
-      } catch (error) {
-          console.error("Erro RPC. Falha ao obter o canal.", error);
-          activityChannelName = "Canal da Atividade (RPC Falhou)"; 
-      }
+    try {
+      const channel = await discordSdk.commands.getChannel({ channel_id: discordSdk.channelId });
+      if (channel && channel.name) activityChannelName = channel.name;
+    } catch (error) {
+      console.error("Erro RPC. Falha ao obter o canal.", error);
+      activityChannelName = "Canal da Atividade (RPC Falhou)";
+    }
   } else {
-      activityChannelName = "Fora de Contexto de Atividade";
+    activityChannelName = "Fora de Contexto de Atividade";
   }
   const textTagString = `Canal: "${activityChannelName}"`;
   const textTag = document.createElement('p');
@@ -120,9 +120,9 @@ async function appendChannelName() {
 
 async function appendUserAvatar() {
   const logoImg = document.querySelector('img.logo');
-  if (!logoImg || !auth) { 
-      console.warn("appendUserAvatar chamado sem autenticação ou sem <img>");
-      return; 
+  if (!logoImg || !auth) {
+    console.warn("appendUserAvatar chamado sem autenticação ou sem <img>");
+    return;
   }
   const user = await fetch(`https://discord.com/api/v10/users/@me`, {
     headers: {
@@ -135,7 +135,7 @@ async function appendUserAvatar() {
   if (user.avatar) {
     avatarUrl = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=128`;
   } else {
-    const defaultAvatarIndex = (user.discriminator || 0) % 5; 
+    const defaultAvatarIndex = (user.discriminator || 0) % 5;
     avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
   }
   logoImg.src = avatarUrl;
@@ -150,7 +150,7 @@ async function fetchBattleQueue() {
   const channelId = discordSdk.channelId;
   const turnOrderContainer = document.querySelector('#turn-order-list');
 
-  if (!channelId) { 
+  if (!channelId) {
     if (turnOrderContainer) turnOrderContainer.innerHTML = "<p>ID do Canal não encontrado.</p>";
     return;
   }
@@ -169,36 +169,37 @@ async function fetchBattleQueue() {
     // ⚠️ CORREÇÃO 2: O BUG DO JSON.PARSE
     // Com PostgreSQL (JSONB), o battleData.fila JÁ É UM OBJETO (ou array), não uma string.
     // Remover o JSON.parse() e o bloco try/catch desnecessário corrige o erro.
-    let fila = battleData.fila;
-    
-    // Garante que a 'fila' é um array para as funções .filter e .sort
-    if (!Array.isArray(fila)) {
-        // Se a fila for um objeto {} ou null/undefined, trata como um array vazio
-        console.warn("Os dados da 'fila' não vieram como um array. A ser tratado como vazio.");
-        fila = [];
+    let filaObjeto = battleData.fila;
+
+    if (!filaObjeto || typeof filaObjeto !== 'object' || Array.isArray(filaObjeto)) {
+      console.warn("Os dados da 'fila' não vieram como um Objeto. A ser tratado como vazio.");
+      filaObjeto = {};
     }
+
+    // Agora, convertemos o Objeto num Array para podermos .filter() e .sort()
+    let fila = Object.values(filaObjeto);
 
     const jogadorAtual = battleData.jogadorAtual;
 
     if (jogadorAtual) {
-      const indiceDoJogador = fila.findIndex(jogador => 
-          jogador.nome === jogadorAtual
+      const indiceDoJogador = fila.findIndex(jogador =>
+        jogador.nome === jogadorAtual
       );
       if (indiceDoJogador !== -1) {
-          const [jogadorPrioritario] = fila.splice(indiceDoJogador, 1);
-          jogadorPrioritario.step = 9999;
-          fila.unshift(jogadorPrioritario);
+        const [jogadorPrioritario] = fila.splice(indiceDoJogador, 1);
+        jogadorPrioritario.step = 9999;
+        fila.unshift(jogadorPrioritario);
       }
     }
-    
+
     const lutadoresAtivos = fila.filter(p => p.ativo === true);
     lutadoresAtivos.sort((a, b) => b.step - a.step);
 
     if (lutadoresAtivos.length > 0) {
       // shift() agora é seguro porque sabemos que lutadoresAtivos é um array
-      const lutadorPrioritario = lutadoresAtivos.shift(); 
+      const lutadorPrioritario = lutadoresAtivos.shift();
       const primeiroItemHtml = `<li><strong class="prioritario">${lutadorPrioritario.nome}</strong> • ${lutadorPrioritario.step}</li>`;
-      const restanteItensHtml = lutadoresAtivos.map(player => 
+      const restanteItensHtml = lutadoresAtivos.map(player =>
         `<li><strong>${player.nome}</strong> • ${player.step}</li>`
       ).join('');
       const htmlList = `<ol>${primeiroItemHtml}${restanteItensHtml}</ol>`;
