@@ -1,11 +1,13 @@
 // --- LÓGICA DA API (CORRIGIDA) ---
 // Esta é a lógica correta que decide qual API chamar.
 const PRODUCTION_URL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = import.meta.env.DEV 
-  ? ''  // Em dev, a "base" é vazia (para o proxy /api/ do vite.config.js funcionar)
-  : PRODUCTION_URL; // Em prod, a "base" é a URL completa do seu server no Render
 
-console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}. API Base: ${API_BASE_URL || 'Relativa'}`);
+// ⚠️ CORREÇÃO 1: A sua sintaxe aqui estava errada.
+// Esta é a lógica correta: 'import.meta.env.DEV' é a condição.
+const API_BASE_URL = ''; // SEMPRE Vazio
+
+console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}. API Base: ${API_BASE_URL || 'Relativa (mesmo domínio)'}`);
+
 
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import rocketLogo from '/rocket.png';
@@ -34,7 +36,8 @@ setupDiscordSdk().then(() => {
 
 }).catch((err) => {
     console.error("Erro fatal no setup do SDK:", err);
-    document.querySelector('#app').innerHTML = `<p style="color:red; max-width: 400px;">Erro fatal no setup do SDK. Verifique o console (Ctrl+Shift+I).<br/><br/>Causas comuns:<br/>1. API (Servidor) está offline.<br/>2. Variáveis de Ambiente (VITE_API_URL) não configuradas na Vercel.<br/>3. Erro de CORS (Verifique "Allowed Origins" no Render e Discord).</p>`;
+    // Esta mensagem de erro personalizada é ótima!
+    document.querySelector('#app').innerHTML = `<p style="color:red; max-width: 400px;">Erro fatal no setup do SDK. Verifique o console (Ctrl+Shift+I).<br/><br/>Causas comuns:<br/>1. API (Servidor) está offline.<br/>2. Variáveis de Ambiente (VITE_API_URL) não configuradas na Vercel.<br/>3. Erro de CORS/CSP (Verifique as Configurações da Atividade no Discord).</p>`;
 });
 
 
@@ -59,7 +62,7 @@ async function setupDiscordSdk() {
     body: JSON.stringify({ code }),
   });
 
-  console.log("Resposta do /api/token:", response.status);
+  console.log(`Resposta do ${API_BASE_URL}/api/token: ${response.status}`);
   if (!response.ok) {
     const errorBody = await response.text();
     console.error("Falha ao obter token:", errorBody);
@@ -93,7 +96,6 @@ document.querySelector('#app').innerHTML = `
 
 
 async function appendChannelName() {
-  // ... (Esta função estava correta, sem necessidade de alteração) ...
   const app = document.querySelector('#channel-name');
   if (app) app.innerHTML = '<p>Carregando nome do canal...</p>';
   
@@ -117,7 +119,6 @@ async function appendChannelName() {
 
 
 async function appendUserAvatar() {
-  // ... (Esta função estava correta, sem necessidade de alteração) ...
   const logoImg = document.querySelector('img.logo');
   if (!logoImg || !auth) { 
       console.warn("appendUserAvatar chamado sem autenticação ou sem <img>");
@@ -165,21 +166,17 @@ async function fetchBattleQueue() {
     const battleData = await response.json();
     console.log('Dados da fila recebidos:', battleData);
 
-    // ⚠️ BUG DO JSON.PARSE CORRIGIDO AQUI ⚠️
-    // Com PostgreSQL (JSONB), o battleData.fila JÁ É UM OBJETO, não uma string.
-    // Remover o JSON.parse() corrige o erro.
-    let fila = battleData.fila; 
+    // ⚠️ CORREÇÃO 2: O BUG DO JSON.PARSE
+    // Com PostgreSQL (JSONB), o battleData.fila JÁ É UM OBJETO (ou array), não uma string.
+    // Remover o JSON.parse() e o bloco try/catch desnecessário corrige o erro.
+    let fila = battleData.fila;
     
-    if (!fila || typeof fila !== 'object') {
-        // Se a fila for nula ou não for um objeto (talvez string vazia?), inicializa.
-        fila = []; 
+    // Garante que a 'fila' é um array para as funções .filter e .sort
+    if (!Array.isArray(fila)) {
+        // Se a fila for um objeto {} ou null/undefined, trata como um array vazio
+        console.warn("Os dados da 'fila' não vieram como um array. A ser tratado como vazio.");
+        fila = [];
     }
-    
-    // Se o seu `crud.js` retorna um objeto (em vez de um array)
-    // talvez você precise disto (descomente se 'fila' não for um array):
-    // if (!Array.isArray(fila)) {
-    //   fila = Object.values(fila); 
-    // }
 
     const jogadorAtual = battleData.jogadorAtual;
 
@@ -198,7 +195,7 @@ async function fetchBattleQueue() {
     lutadoresAtivos.sort((a, b) => b.step - a.step);
 
     if (lutadoresAtivos.length > 0) {
-      // Se lutadoresAtivos não for vazio, mas shift() falhar, é porque não é um array
+      // shift() agora é seguro porque sabemos que lutadoresAtivos é um array
       const lutadorPrioritario = lutadoresAtivos.shift(); 
       const primeiroItemHtml = `<li><strong class="prioritario">${lutadorPrioritario.nome}</strong> • ${lutadorPrioritario.step}</li>`;
       const restanteItensHtml = lutadoresAtivos.map(player => 
@@ -224,3 +221,4 @@ setInterval(() => {
     fetchBattleQueue();
   }
 }, 2000); // 2000ms = 2 segundos.
+

@@ -10,16 +10,14 @@ const pool = new Pool({
 
 // A função 'handler' é o que a Vercel executa
 export default async function handler(req, res) {
-  // Configuração de CORS (necessário para serverless)
+  // Configuração de CORS (importante)
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL); // A sua URL do Vercel
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // O Vercel trata o 'OPTIONS' (pré-verificação)
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).send({ error: 'Method Not Allowed' });
 
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: 'Código de autorização ausente' });
