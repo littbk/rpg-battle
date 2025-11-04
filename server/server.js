@@ -5,7 +5,6 @@ import cors from "cors"; // Adicionado para CORS
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
-import characterManager from "./lib/servercharmanager.js";
 
 dotenv.config({ path: "../.env" }); // OK, mas certifique-se de que .env tem as vars certas
 
@@ -106,6 +105,7 @@ app.get("/api/get-battle-queue", (req, res) => {
   }
 });
 
+/*
 app.get("/api/retornar-ficha", async (req, res) => {
   try {
     const user = JSON.parse(req.query.user);
@@ -119,7 +119,7 @@ app.get("/api/retornar-ficha", async (req, res) => {
     res.status(500).json({ error: 'Erro interno do servidor ao processar ficha' });
   }
 });
-
+*/
 // Seus outros códigos (proxy-image, get-ficha) permanecem iguais...
 
 app.listen(port, () => {
