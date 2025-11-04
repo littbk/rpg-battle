@@ -1,22 +1,25 @@
 {
-  "name": "getting-starter-activity-server",
+  "name": "rpg-battle-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Servidor do projeto RPG Battle",
   "main": "server.js",
   "type": "module",
- "scripts": {
-  "build": "cd client && npm install && npm run build",
-   "start": "node server.js",
-  "postinstall": "npm rebuild better-sqlite3 --build-from-source"
-},
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "node server.js",
+    "postinstall": "npm rebuild better-sqlite3 --build-from-source --unsafe-perm"
+  },
   "keywords": [],
-  "author": "",
+  "author": "Litt",
   "license": "ISC",
   "dependencies": {
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.5",
-    "dotenv": "^17.0.0",
+    "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }
