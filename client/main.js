@@ -196,13 +196,21 @@ async function fetchBattleQueue() {
     lutadoresAtivos.sort((a, b) => b.step - a.step);
 
     if (lutadoresAtivos.length > 0) {
-      // shift() agora é seguro porque sabemos que lutadoresAtivos é um array
+      // Pega o lutador prioritário (quem joga agora)
       const lutadorPrioritario = lutadoresAtivos.shift();
-      const primeiroItemHtml = `<li><strong class="prioritario">${lutadorPrioritario.nome}</strong> • ${lutadorPrioritario.step}</li>`;
+
+      // Cria o HTML para o lutador prioritário (Seta + ID + Nome)
+      const primeiroItemHtml = `<li class="prioritario">➡️ [${lutadorPrioritario.battlerId}] <strong>${lutadorPrioritario.nome}</strong></li>`;
+
+      // Cria o HTML para os outros (Seta + ID + Nome)
+      // Usamos &rarr; (→) para os demais
       const restanteItensHtml = lutadoresAtivos.map(player =>
-        `<li><strong>${player.nome}</strong> • ${player.step}</li>`
+        `<li>&rarr; [${player.battlerId}] ${player.nome}</li>`
       ).join('');
-      const htmlList = `<ol>${primeiroItemHtml}${restanteItensHtml}</ol>`;
+
+      // Muda de <ol> (lista ordenada) para <ul> (lista com setas)
+      const htmlList = `<ul class="turn-list">${primeiroItemHtml}${restanteItensHtml}</ul>`;
+
       turnOrderContainer.innerHTML = htmlList;
     } else {
       turnOrderContainer.innerHTML = "<p>Nenhum lutador ativo na fila.</p>";

@@ -80,6 +80,19 @@ button:focus-visible {
     text-transform: uppercase; /* Opcional: Coloca em maiúsculas */
 }
 
+.turn-list {
+  list-style-type: none; /* Remove os bullets padrão */
+  padding-left: 5px; /* Remove o padding da lista */
+  font-size: 1.1em;
+}
+.turn-list li {
+  margin-bottom: 5px; /* Espaçamento entre os itens */
+}
+.prioritario {
+  font-weight: bold;
+  color: white; /* Destaca o jogador atual */
+}
+
 
 @media (prefers-color-scheme: light) {
   :root {
