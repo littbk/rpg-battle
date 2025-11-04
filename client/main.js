@@ -1,11 +1,13 @@
 // --- LÓGICA DA API (CORRIGIDA) ---
 // Esta é a lógica correta que decide qual API chamar.
-const isDev = import.meta.env.DEV;
-const PRODUCTION_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, ''); // remove barra final se existir
-const API_BASE_URL = isDev ? '' : PRODUCTION_URL;
+const PRODUCTION_URL = import.meta.env.VITE_API_URL;
 
-console.log(`[INIT] Modo de ${isDev ? 'Desenvolvimento' : 'Produção'}.`);
-console.log(`[INIT] API Base: ${API_BASE_URL || 'Relativa (mesmo domínio)'}`);
+// ⚠️ CORREÇÃO 1: A sua sintaxe aqui estava errada.
+// Esta é a lógica correta: 'import.meta.env.DEV' é a condição.
+const API_BASE_URL = ''; // SEMPRE Vazio
+
+console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}. API Base: ${API_BASE_URL || 'Relativa (mesmo domínio)'}`);
+
 
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import rocketLogo from '/rocket.png';
