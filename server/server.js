@@ -1,48 +1,97 @@
 import express from "express";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import cors from "cors"; // Adicionado para CORS
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
-import Database from "better-sqlite3";
+import cors from "cors";
+import pg from 'pg'; // 1. Trocado 'better-sqlite3' por 'pg'
 
-dotenv.config({ path: "../.env" }); // OK, mas certifique-se de que .env tem as vars certas
+// --- CONFIGURAÇÃO DE AMBIENTE ---
+// Isto só vai carregar o .env em desenvolvimento. Em produção (Render),
+// as variáveis já são injetadas pelo "Environment" do Render.
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: "../.env" });
+}
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// --- CONEXÃO COM O BANCO DE DADOS (AGORA POSTGRESQL) ---
+// 2. Removemos toda a lógica de 'path' e 'dbPath'.
+// Usamos Pool em vez de Client, pois é muito melhor para um servidor web
+// (gere múltiplas conexões automaticamente).
+const { Pool } = pg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    // 3. Necessário para as conexões gratuitas do Render
+    rejectUnauthorized: false 
+  }
+});
 
-// --- CONEXÃO COM O BANCO DE DADOS ---
-const dbPath = path.join(__dirname, '..', '..', 'database.sqlite');
-console.log(`Tentando abrir o banco de dados em: ${dbPath}`);
+// Teste de conexão opcional
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error("!!! ERRO FATAL AO CONECTAR AO BANCO DE DADOS POSTGRESQL:", err);
+  } else {
+    console.log("--- Conectado com sucesso ao PostgreSQL no Render. ---");
+  }
+});
 
-const db = new Database(dbPath, { verbose: console.log });
-console.log(`Conectado ao banco de dados em: ${dbPath}`);
 
 const app = express();
-const port = process.env.PORT || 3001; // Use PORT do .env ou 3001
+// 4. O Render fornece a porta via process.env.PORT (geralmente 10000)
+const port = process.env.PORT || 3001; 
 
 app.use(express.json());
+
+// --- CONFIGURAÇÃO DE CORS (SEGURANÇA) ---
+// 5. Configuração de CORS mais segura, lendo a URL do seu client (Vercel)
+//    a partir das variáveis de ambiente.
+const allowedOrigins = [
+  process.env.CLIENT_URL, // Sua URL do Vercel (ex: https://rpg-battle-psi.vercel.app)
+  'http://localhost:5173'  // Seu client local
+];
+
 app.use(cors({
-  origin: ['https://*.discordsays.com', 'https://rpg-battle-psi.vercel.app', 'http://localhost:*'], // Permite origens do Discord e local
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: function (origin, callback) {
+    // Permite chamadas sem 'origin' (ex: Postman) ou da nossa lista
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS BLOQUEADO: Origem não permitida: ${origin}`);
+      callback(new Error('Não permitido por CORS'));
+    }
+  }
 }));
+
+// --- ROTA DE "SAÚDE" (HEALTH CHECK) ---
+app.get("/", (req, res) => {
+  res.send("Servidor da API do RPG Battle está no ar! 🚀");
+});
+
+
+// --- ROTAS DA API ---
 
 app.post("/api/token", async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: 'Código de autorização ausente' });
 
+  // 6. O redirect_uri NÃO PODE ser hardcoded. 
+  //    Deve ser a mesma URL do seu client (Vercel).
+  if (!process.env.CLIENT_URL) {
+      console.error("ERRO: CLIENT_URL não está definido nas variáveis de ambiente!");
+      return res.status(500).json({ error: 'Configuração do servidor incompleta.' });
+  }
+
   try {
+    const params = new URLSearchParams({
+      client_id: process.env.DISCORD_CLIENT_ID,
+      client_secret: process.env.DISCORD_CLIENT_SECRET,
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: process.env.CLIENT_URL // 7. Usando a variável de ambiente
+    });
+    
     const response = await fetch(`https://discord.com/api/oauth2/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: process.env.DISCORD_CLIENT_ID, // Mudei de VITE_ para padrão server
-        client_secret: process.env.DISCORD_CLIENT_SECRET,
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: 'https://rpg-battle-psi.vercel.app/' // ⚠️ ADICIONADO: Obrigatório! Deve combinar com o Redirect URI no Portal do Discord
-      }),
+      body: params,
     });
 
     if (!response.ok) {
@@ -52,15 +101,15 @@ app.post("/api/token", async (req, res) => {
     }
 
     const { access_token } = await response.json();
-    console.log('Access token gerado:', access_token);
-    res.json({ access_token }); // Retorne JSON correto
+    console.log('Access token gerado com sucesso.');
+    res.json({ access_token });
   } catch (error) {
     console.error('Erro no /api/token:', error);
     res.status(500).json({ error: 'Erro interno no servidor' });
   }
 });
 
-// Os outros endpoints permanecem iguais, mas adicionei logs/tratamentos extras se quiser
+
 app.get("/api/get-player-data", async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -75,8 +124,13 @@ app.get("/api/get-player-data", async (req, res) => {
     const discordUser = await userResponse.json();
     const discordId = discordUser.id;
 
-    const stmt = db.prepare('SELECT * FROM players WHERE discord_id = ?');
-    const playerData = stmt.get(discordId);
+    // 8. SINTAXE DE QUERY MUDOU DE SQLITE PARA POSTGRESQL
+    // SQLite: db.prepare('... = ?').get(discordId)
+    // Postgre: pool.query('... = $1', [discordId])
+    const query = 'SELECT * FROM players WHERE discord_id = $1';
+    const result = await pool.query(query, [discordId]);
+    
+    const playerData = result.rows[0]; // O resultado fica em 'rows'
 
     if (playerData) {
       res.json(playerData);
@@ -89,10 +143,14 @@ app.get("/api/get-player-data", async (req, res) => {
   }
 });
 
-app.get("/api/get-battle-queue", (req, res) => {
+
+app.get("/api/get-battle-queue", async (req, res) => {
   try {
-    const stmt = db.prepare('SELECT * FROM Batalhas WHERE id = 1');
-    const battleData = stmt.get();
+    // 9. SINTAXE DE QUERY MUDOU
+    const query = 'SELECT * FROM Batalhas WHERE id = $1';
+    const result = await pool.query(query, [1]); // Usando 1 como parâmetro
+
+    const battleData = result.rows[0];
 
     if (battleData && battleData.fila) {
       res.json(battleData);
@@ -107,21 +165,13 @@ app.get("/api/get-battle-queue", (req, res) => {
 
 /*
 app.get("/api/retornar-ficha", async (req, res) => {
-  try {
-    const user = JSON.parse(req.query.user);
-    console.log(user.username, user.id, user.avatar);
-
-    let message = { author: { username: user.username, id: user.id } };
-    let p = await characterManager.getCharacterJson(message);
-    res.json(p);
-  } catch (error) {
-    console.error("Erro em /api/retornar-ficha:", error);
-    res.status(500).json({ error: 'Erro interno do servidor ao processar ficha' });
-  }
+  // ... Este código também precisaria ser migrado para usar pool.query ...
 });
 */
-// Seus outros códigos (proxy-image, get-ficha) permanecem iguais...
 
 app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+  // 10. A porta 10000 (do Render) não é acessível publicamente. 
+  // O Render faz o proxy para 443 (https) automaticamente.
+  // O localhost:3001 é para si.
+  console.log(`Servidor a ouvir na porta ${port}`);
 });
