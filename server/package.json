@@ -5,7 +5,9 @@
   "main": "server.js",
   "type": "module",
  "scripts": {
-  "build": "cd client && npm install && npm run build"
+  "build": "cd client && npm install && npm run build",
+   "start": "node server.js",
+  "postinstall": "npm rebuild better-sqlite3 --build-from-source"
 },
   "keywords": [],
   "author": "",
