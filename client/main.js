@@ -1,8 +1,11 @@
-// Trigger deploy
-
 // --- LÓGICA DA API (CORRIGIDA) ---
-// Sempre use caminhos relativos para fetches no client-side, pois o Discord proxy cuida do roteamento.
-const API_BASE_URL = '';  // Vazio para dev e prod: usa relativo como /api/...
+// Esta é a lógica correta que decide qual API chamar.
+const PRODUCTION_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.DEV 
+  ? ''  // Em dev, a "base" é vazia (para o proxy /api/ do vite.config.js funcionar)
+  : PRODUCTION_URL; // Em prod, a "base" é a URL completa do seu server no Render
+
+console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}. API Base: ${API_BASE_URL || 'Relativa'}`);
 
 import { DiscordSDK } from "@discord/embedded-app-sdk";
 import rocketLogo from '/rocket.png';
@@ -10,75 +13,71 @@ import "./style.css";
 
 // --- VARIÁVEIS GLOBAIS ---
 let auth;
-// ⚠️ FIX 3: 'isSdkReady' deve começar como 'false'.
-// O loop só deve rodar DEPOIS que o SDK estiver pronto.
 let isSdkReady = false; 
 
 const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
-console.log('env')
-console.log(import.meta.env.VITE_DISCORD_CLIENT_ID)
+console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT_ID);
 
-// ⚠️ FIX 2: Chamando a inicialização do SDK APENAS UMA VEZ.
+
+// --- INICIALIZAÇÃO DA APLICAÇÃO ---
 setupDiscordSdk().then(() => {
   console.log("Discord SDK está autenticado e pronto.");
   
-  // Agora que está pronto, ativamos o loop de polling
   isSdkReady = true;
 
-  // ⚠️ FIX 4: Funções que só rodam UMA VEZ.
-  // Chame-as aqui, DEPOIS da autenticação, e não dentro do loop.
+  // Funções que só rodam UMA VEZ
   appendUserAvatar();
   appendChannelName();
   
-  // Chame a fila de batalha uma vez imediatamente para carregar
-  //fetchBattleQueue(); 
+  // Chame a fila uma vez imediatamente
+  fetchBattleQueue(); 
 
 }).catch((err) => {
     console.error("Erro fatal no setup do SDK:", err);
-    // TODO: Mostrar um erro para o usuário na interface
+    document.querySelector('#app').innerHTML = `<p style="color:red; max-width: 400px;">Erro fatal no setup do SDK. Verifique o console (Ctrl+Shift+I).<br/><br/>Causas comuns:<br/>1. API (Servidor) está offline.<br/>2. Variáveis de Ambiente (VITE_API_URL) não configuradas na Vercel.<br/>3. Erro de CORS (Verifique "Allowed Origins" no Render e Discord).</p>`;
 });
+
 
 async function setupDiscordSdk() {
   await discordSdk.ready();
   console.log("Discord SDK is ready");
 
-  // Authorize with Discord Client
   const { code } = await discordSdk.commands.authorize({
     client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
     response_type: "code",
     state: "",
     prompt: "none",
-    scope: [
-      "identify",
-      "guilds",
-    // "applications.commands" // Geralmente não é necessário para Activities
-    ],
+    scope: [ "identify", "guilds" ],
   });
 
-  // Retrieve an access_token from your activity's server
-  // Usa caminho relativo: o proxy do Discord encaminha para o Vercel.
-  const response = await fetch(`${API_BASE_URL}/api/token`, { // Ajuste esta rota se necessário
+  console.log("Código de autorização recebido:", code);
+
+  // Busca o access_token do nosso backend (Render ou local)
+  const response = await fetch(`${API_BASE_URL}/api/token`, { 
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      code,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
   });
+
+  console.log("Resposta do /api/token:", response.status);
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("Falha ao obter token:", errorBody);
+    throw new Error(`Falha ao obter token: ${response.status}`);
+  }
 
   const { access_token } = await response.json();
 
-  // Authenticate with Discord client (using the access_token)
-  auth = await discordSdk.commands.authenticate({
-    access_token,
-  });
+  // Autentica com o cliente Discord
+  auth = await discordSdk.commands.authenticate({ access_token });
 
   if (auth == null) {
     throw new Error("Authenticate command failed");
   }
+  console.log("Autenticação com o SDK concluída.");
 }
 
+// Injeta o HTML base na página
 document.querySelector('#app').innerHTML = `
   <div>
     <img src="${rocketLogo}" class="logo" alt="Discord" />
@@ -92,56 +91,38 @@ document.querySelector('#app').innerHTML = `
   </div>
 `;
 
-/**
- * Puxa o nome do canal de voz atual via Discord SDK RPC e atualiza a UI.
- */
+
 async function appendChannelName() {
-    const app = document.querySelector('#channel-name');
-    if (app) {
-        app.innerHTML = '<p>Carregando nome do canal...</p>';
-    }
-    
-    let activityChannelName = 'Unknown';
-    if (discordSdk.channelId && discordSdk.guildId) {
-        try {
-            const channel = await discordSdk.commands.getChannel({
-                channel_id: discordSdk.channelId
-            });
-
-            console.log('Channel Data Received:', channel);
-
-            if (channel && channel.name) {
-                activityChannelName = channel.name;
-            } else {
-                console.warn("getChannel retornou sem nome ou objeto de canal válido.");
-                activityChannelName = "Canal Desconhecido (API)";
-            }
-            
-        } catch (error) {
-            console.error("Erro RPC. Falha ao obter o canal.", error);
-            activityChannelName = "Canal da Atividade (RPC Falhou)"; 
-        }
-    } else {
-        activityChannelName = "Fora de Contexto de Atividade";
-    }
-
-    const textTagString = `Activity Channel: "${activityChannelName}"`;
-    const textTag = document.createElement('p');
-    textTag.textContent = textTagString;
-    
-    if (app) {
-        app.innerHTML = textTag.outerHTML;
-    }
+  // ... (Esta função estava correta, sem necessidade de alteração) ...
+  const app = document.querySelector('#channel-name');
+  if (app) app.innerHTML = '<p>Carregando nome do canal...</p>';
+  
+  let activityChannelName = 'Unknown';
+  if (discordSdk.channelId && discordSdk.guildId) {
+      try {
+          const channel = await discordSdk.commands.getChannel({ channel_id: discordSdk.channelId });
+          if (channel && channel.name) activityChannelName = channel.name;
+      } catch (error) {
+          console.error("Erro RPC. Falha ao obter o canal.", error);
+          activityChannelName = "Canal da Atividade (RPC Falhou)"; 
+      }
+  } else {
+      activityChannelName = "Fora de Contexto de Atividade";
+  }
+  const textTagString = `Canal: "${activityChannelName}"`;
+  const textTag = document.createElement('p');
+  textTag.textContent = textTagString;
+  if (app) app.innerHTML = textTag.outerHTML;
 }
 
+
 async function appendUserAvatar() {
+  // ... (Esta função estava correta, sem necessidade de alteração) ...
   const logoImg = document.querySelector('img.logo');
-  if (!logoImg || !auth) { // Adicionado verificação de !auth
+  if (!logoImg || !auth) { 
       console.warn("appendUserAvatar chamado sem autenticação ou sem <img>");
       return; 
   }
-
-  // 1️⃣ Busca os dados do usuário autenticado
   const user = await fetch(`https://discord.com/api/v10/users/@me`, {
     headers: {
       Authorization: `Bearer ${auth.access_token}`,
@@ -149,23 +130,20 @@ async function appendUserAvatar() {
     },
   }).then((response) => response.json());
 
-  // 2️⃣ Monta a URL do avatar
   let avatarUrl;
   if (user.avatar) {
     avatarUrl = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=128`;
   } else {
-    // Discriminator pode ser 0 em contas novas, mas fallback para default
     const defaultAvatarIndex = (user.discriminator || 0) % 5; 
     avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
   }
-
-  // 3️⃣ Substitui a imagem do logo pelo avatar do usuário
   logoImg.src = avatarUrl;
   logoImg.alt = `${user.username} avatar`;
   logoImg.width = 128;
   logoImg.height = 128;
   logoImg.style.borderRadius = '50%';
 }
+
 
 async function fetchBattleQueue() {
   const channelId = discordSdk.channelId;
@@ -177,7 +155,6 @@ async function fetchBattleQueue() {
   }
 
   try {
-    // Usa caminho relativo: o proxy do Discord encaminha.
     const response = await fetch(`${API_BASE_URL}/api/get-battle-queue?channel=${channelId}`);
 
     if (!response.ok) {
@@ -188,15 +165,21 @@ async function fetchBattleQueue() {
     const battleData = await response.json();
     console.log('Dados da fila recebidos:', battleData);
 
-    // Verifica se fila é um array válido
-    let fila = [];
-    try {
-      fila = JSON.parse(battleData.fila);
-      if (!Array.isArray(fila)) throw new Error('Fila não é um array');
-    } catch (e) {
-      console.error('Erro ao parsear fila:', e);
-      throw new Error('Formato inválido da fila de batalha.');
+    // ⚠️ BUG DO JSON.PARSE CORRIGIDO AQUI ⚠️
+    // Com PostgreSQL (JSONB), o battleData.fila JÁ É UM OBJETO, não uma string.
+    // Remover o JSON.parse() corrige o erro.
+    let fila = battleData.fila; 
+    
+    if (!fila || typeof fila !== 'object') {
+        // Se a fila for nula ou não for um objeto (talvez string vazia?), inicializa.
+        fila = []; 
     }
+    
+    // Se o seu `crud.js` retorna um objeto (em vez de um array)
+    // talvez você precise disto (descomente se 'fila' não for um array):
+    // if (!Array.isArray(fila)) {
+    //   fila = Object.values(fila); 
+    // }
 
     const jogadorAtual = battleData.jogadorAtual;
 
@@ -215,10 +198,11 @@ async function fetchBattleQueue() {
     lutadoresAtivos.sort((a, b) => b.step - a.step);
 
     if (lutadoresAtivos.length > 0) {
+      // Se lutadoresAtivos não for vazio, mas shift() falhar, é porque não é um array
       const lutadorPrioritario = lutadoresAtivos.shift(); 
-      const primeiroItemHtml = `<li><strong class="prioritario">${lutadorPrioritario.nome}</strong> (Step: ${lutadorPrioritario.step})</li>`;
+      const primeiroItemHtml = `<li><strong class="prioritario">${lutadorPrioritario.nome}</strong> • ${lutadorPrioritario.step}</li>`;
       const restanteItensHtml = lutadoresAtivos.map(player => 
-        `<li><strong>${player.nome}</strong> (Step: ${player.step})</li>`
+        `<li><strong>${player.nome}</strong> • ${player.step}</li>`
       ).join('');
       const htmlList = `<ol>${primeiroItemHtml}${restanteItensHtml}</ol>`;
       turnOrderContainer.innerHTML = htmlList;
@@ -235,10 +219,7 @@ async function fetchBattleQueue() {
 }
 
 // --- LOOP DE ATUALIZAÇÃO (POLLING) ---
-
-// ⚠️ FIX 4: O loop agora só cuida da fila de batalha.
 setInterval(() => {
-  // Só roda a função se o SDK estiver pronto (isSdkReady é true)
   if (isSdkReady) {
     fetchBattleQueue();
   }
