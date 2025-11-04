@@ -37,7 +37,7 @@ setupDiscordSdk().then(() => {
 }).catch((err) => {
     console.error("Erro fatal no setup do SDK:", err);
     // Esta mensagem de erro personalizada é ótima!
-    document.querySelector('#app').innerHTML = `<p style="color:red; max-width: 400px;">Erro fatal no setup do SDK. Verifique o console (Ctrl+Shift+I).<br/><br/>Causas comuns:<br/>1. API (Servidor) está offline.<br/>2. Variáveis de Ambiente (VITE_API_URL) não configuradas na Vercel.<br/>3. Erro de CORS/CSP (Verifique as Configurações da Atividade no Discord).</p>`;
+    document.querySelector('#app').innerHTML = `<p style="color:red; max-width: 400px;">Erro fatal no setup do SDK. Verifique o console (Ctrl+Shift+I).<br/><br/>Causas comuns:<br/>1. API (Servidor) está offline.<br/>2.<br/>3. Erro de CORS/CSP (Verifique as Configurações da Atividade no Discord).</p>`;
 });
 
 
