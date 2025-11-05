@@ -27,6 +27,8 @@ const botClient = new Client({
 });
 
 // Certifique-se de que DISCORD_BOT_TOKEN está no seu ficheiro .env
+console.log('-=========================================')
+console.log(process.env.DISCORD_BOT_TOKEN)
 botClient.login(process.env.DISCORD_BOT_TOKEN);
 botClient.once('ready', () => {
   console.log(`--- Bot ${botClient.user.tag} está online! ---`);
