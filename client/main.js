@@ -421,9 +421,6 @@ async function setupDiscordSdk() {
       "identify", 
       "guilds", 
       "rpc.voice.read",
-      "rpc.messages.read",
-      "rpc.messages.subscribe",
-      "rpc.messages.send"
     ], 
   });
 
