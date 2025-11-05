@@ -326,12 +326,13 @@ async function fetchChannelMessages() {
   try {
     // ⭐️ MUDANÇA: Chama a nossa API de backend
     
-    
+ 
+
     console.log('=======================================')
+    const response = await fetch(`${API_BASE_URL}/api/get-chat-messages?channel=${RPG_CHAT_CHANNEL_ID}`);
+       
     console.log(response)
     console.log('=======================================')
-    
-    const response = await fetch(`${API_BASE_URL}/api/get-chat-messages?channel=${RPG_CHAT_CHANNEL_ID}`);
     if (!response.ok) {
       throw new Error(`Erro do Servidor: ${response.status}`);
     }
