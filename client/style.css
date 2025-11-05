@@ -1,17 +1,16 @@
-
-
 :root {
-  
+
   --cor-fundo-app: #242424;
   --cor-fundo-desktop: #3f3f46;
   --cor-moldura-celular: #1a1a1a;
   --cor-texto: rgba(255, 255, 255, 0.87);
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
-  height: 100%; 
+  height: 100%;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   color: var(--cor-texto);
 }
@@ -26,7 +25,7 @@ html, body {
 .screen {
   width: 100%;
   height: 100%;
-  overflow-y: auto; 
+  overflow-y: auto;
   position: relative;
 }
 
@@ -41,6 +40,7 @@ html, body {
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
@@ -51,9 +51,11 @@ html, body {
   padding-left: 5px;
   font-size: 1.1em;
 }
+
 .turn-list li {
   margin-bottom: 5px;
 }
+
 .prioritario {
   font-weight: bold;
   color: white;
@@ -61,8 +63,8 @@ html, body {
 
 
 @media (min-width: 600px) {
-  
-  
+
+
   body {
     background-color: var(--cor-fundo-desktop);
     display: flex;
@@ -72,23 +74,25 @@ html, body {
 
   .phone-container {
     width: 375px;
-    height: 812px; 
-    
+    height: 812px;
+
     background-color: var(--cor-moldura-celular);
     border-radius: 40px;
-    padding: 12px; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    padding: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     transition: all 0.3s ease;
   }
 
-  
+
   .screen {
     width: 100%;
     height: 100%;
     background-color: var(--cor-fundo-app);
-    border-radius: 28px; /* Cantos arredondados da tela interna */
+    border-radius: 28px;
+    /* Cantos arredondados da tela interna */
     position: relative;
-    overflow: hidden; /* Esconde qualquer coisa que vaze da "tela" */
+    overflow: hidden;
+    /* Esconde qualquer coisa que vaze da "tela" */
   }
 
   /* Adiciona o "notch" (entalhe) falso na parte de cima */
@@ -107,10 +111,13 @@ html, body {
   }
 
   #app {
-    padding: 1.5rem; /* Um pouco menos de padding */
-    height: 100%; /* Garante que ocupe a "tela" inteira */
-    box-sizing: border-box; /* Faz o padding não "estourar" a altura */
-    
+    padding: 1.5rem;
+    /* Um pouco menos de padding */
+    height: 100%;
+    /* Garante que ocupe a "tela" inteira */
+    box-sizing: border-box;
+    /* Faz o padding não "estourar" a altura */
+
     overflow-y: auto;
   }
 }
@@ -125,18 +132,21 @@ html, body {
 
 .navbar {
   /* Posicionamento */
-  position: absolute;  /* Fixa a barra em relação ao pai (.screen) */
-  bottom: 0;           /* Gruda no fundo */
+  position: absolute;
+  /* Fixa a barra em relação ao pai (.screen) */
+  bottom: 0;
+  /* Gruda no fundo */
   left: 0;
   width: 100%;
-  
+
   /* Estilos */
   background-color: #333;
   overflow: hidden;
 
   /* Bônus: Usando Flexbox para alinhar os links (melhor que 'float') */
   display: flex;
-  justify-content: space-around; /* Distribui os links igualmente */
+  justify-content: space-around;
+  /* Distribui os links igualmente */
 }
 
 /* 2. OS LINKS (O SEU CÓDIGO, SÓ REMOVI O 'float') */
@@ -149,7 +159,7 @@ html, body {
   text-decoration: none;
   font-size: 17px;
 
-  flex-grow: 1; 
+  flex-grow: 1;
 }
 
 .navbar a:hover {
@@ -166,4 +176,35 @@ html, body {
 
 #app {
   padding-bottom: 60px;
+}
+
+.active.btnMenu {
+  background-image: url('img/btn.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%; 
+    transition: background-image 0.3s linear;
+}
+
+.btnMenu  {
+  background-image: url('img/btnOf.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%; 
+  transition: background-image 0.3s linear;
+}
+
+
+.btnMenu:hover {
+  color: #242424;
+  background-image: url('img/btnHover.png');
+}
+
+.active.btnMenu:hover {
+  color: #000000;
+  background-image: url('img/btnHover.png');
+}
+
+body {
+  background-color: #1a1a1a;
 }
