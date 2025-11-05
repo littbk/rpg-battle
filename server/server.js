@@ -21,6 +21,7 @@ const botClient = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent, // ⭐️ NOTA: Pode precisar disto para ler o conteúdo das mensagens
     GatewayIntentBits.GuildVoiceStates // Necessário para /get-voice-participants
   ]
 });
@@ -178,8 +179,7 @@ app.get("/api/get-battle-queue", async (req, res) => {
   } catch (error) {
     console.error("Erro em /api/get-battle-queue:", error);
     res.status(500).json({ error: 'Erro interno do servidor ao processar fila' });
-    
-  }
+  } // ⭐️ CORREÇÃO: O 'D' ALEATÓRIO FOI REMOVIDO DAQUI
 });
 
 // --- 6. ⭐️ ADICIONADO: ENDPOINT PARA A PÁGINA DE FICHA ---
@@ -217,6 +217,7 @@ app.get('/api/get-voice-participants', async (req, res) => {
 // --- 7. ⭐️ ADICIONADO: ENDPOINT PARA CARREGAR O CHAT ---
 app.get('/api/get-chat-messages', async (req, res) => {
   try {
+    debugger
     const { channel: channelId } = req.query;
     if (!channelId) {
       return res.status(400).json({ error: 'ID do Canal ausente' });

@@ -583,7 +583,7 @@ async function fetchBattleQueue() {
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/get-battle-queue?channel=${channelId}`);
-
+    
     if (!response.ok) {
       const errorData = await response.text();
       console.error("Erro do Servidor:", errorData);
@@ -651,5 +651,5 @@ setInterval(() => {
     fetchBattleQueue();
     fetchChannelMessages(); // ⭐️ NOVO: Atualiza o chat por polling
   }
-}, 2000); // ⭐️ NOTA: 2 segundos pode ser lento para um chat. 
+}, 20000); // ⭐️ NOTA: 2 segundos pode ser lento para um chat. 
          // Considere 1000ms (1 segundo) se o seu servidor aguentar.
