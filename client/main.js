@@ -1,6 +1,9 @@
 // --- CONFIGURAÇÃO BASE ---
-let API_BASE_URL = '';
-console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}.`);
+// ⭐️ CORREÇÃO: Agora, a API_BASE_URL virá das variáveis de ambiente
+// Em produção (Vercel), ele usará VITE_API_URL (ex: https://meu-backend.onrender.com)
+// Em desenvolvimento (local), ele usará '' (vazio) para o proxy funcionar.
+let API_BASE_URL = import.meta.env.VITE_API_URL || '';
+console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}. API Base: ${API_BASE_URL || 'Relativa (mesmo domínio)'}`);
 
 import "./style.css"; 
 
@@ -8,10 +11,10 @@ import "./style.css";
 let auth;
 let isSdkReady = false;
 let discordSdk = null;
-let DiscordSDK = null;
+// let DiscordSDK = null; // <-- ⭐️ CORREÇÃO: Esta linha redundante foi REMOVIDA.
 let currentChannelId = null; // Armazena o ID do canal de VOZ atual
 
-// ⭐️ NOVO: ID do canal de CHAT fixo ⭐️
+// ID do canal de CHAT fixo
 const RPG_CHAT_CHANNEL_ID = '1420530344884572271';
 
 // --- VARIÁVEIS DE NAVEGAÇÃO ---
@@ -464,9 +467,9 @@ function renderMessage(message, messagesList) {
 async function setupDiscordSdk() {
   
   // Carrega o SDK
+  // ⭐️ NOTA: Esta importação é dinâmica e fica dentro da função async
   const sdkModule = await import("@discord/embedded-app-sdk");
-  DiscordSDK = sdkModule.DiscordSDK;
-  discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
+  discordSdk = new sdkModule.DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
   console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT_ID);
   
   await discordSdk.ready();
@@ -582,12 +585,19 @@ async function fetchBattleQueue() {
   }
 
   try {
+    channelId = 1
     const response = await fetch(`${API_BASE_URL}/api/get-battle-queue?channel=${channelId}`);
-    
+
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error("Erro do Servidor:", errorData);
-      throw new Error(`Erro do servidor: ${response.status}`);
+      try {
+        const errorData = await response.json(); // ⭐️ MUDANÇA: Tenta ler o JSON do erro
+        console.error("Erro do Servidor:", errorData);
+        // Mostra o erro vindo do servidor
+        throw new Error(errorData.error || `Erro do servidor: ${response.status}`);
+      } catch (e) {
+        // Fallback se a resposta do erro não for JSON
+        throw new Error(`Erro do servidor: ${response.status}`);
+      }
     }
 
     const battleData = await response.json();
@@ -621,7 +631,8 @@ async function fetchBattleQueue() {
   } catch (error) {
     console.error("Falha ao buscar fila:", error);
     if (turnOrderContainer) {
-      turnOrderContainer.innerHTML = `<p style="color:red;">Falha ao buscar dados.<br/>${error.message}</p>`;
+      // Mostra o erro específico (ex: "Batalha não encontrada...")
+      turnOrderContainer.innerHTML = `<p style="color:red;">${error.message}</p>`;
     }
   }
 }
@@ -636,7 +647,7 @@ function mockDevelopmentMode() {
     logoImg.alt = "Avatar do Servidor";
     logoImg.width = 128;
     logoImg.height = 128;
-    logoImg.style.borderRadius = '50%';
+    logoImg.style.borderRadius = "50%";
   }
 
   const channelElement = document.querySelector('#channel-name');
@@ -651,5 +662,4 @@ setInterval(() => {
     fetchBattleQueue();
     fetchChannelMessages(); // ⭐️ NOVO: Atualiza o chat por polling
   }
-}, 20000); // ⭐️ NOTA: 2 segundos pode ser lento para um chat. 
-         // Considere 1000ms (1 segundo) se o seu servidor aguentar.
+}, 2000);
