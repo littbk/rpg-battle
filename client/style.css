@@ -209,3 +209,116 @@ body {
   background-color: #1a1a1a;
 }
 
+
+
+
+.chat-container {
+  flex-grow: 1; /* Faz o chat ocupar todo o espaço restante */
+  display: flex;
+  flex-direction: column;
+  background-color: #2f2f33; /* Um pouco mais claro que o fundo */
+  border-top: 1px solid #444;
+  padding: 10px;
+  box-sizing: border-box;
+  overflow: hidden; /* Previne quebras de layout */
+  margin-top: 10px; /* Espaço entre a lista de turnos e o chat */
+}
+
+.chat-messages {
+  flex-grow: 1;
+  overflow-y: auto; /* Permite rolar as mensagens */
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column; /* Mensagens empilhadas */
+  gap: 10px; /* Espaço entre as mensagens */
+}
+
+.chat-message {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.95em;
+  text-align: left;
+  word-wrap: break-word; /* Quebra palavras longas */
+  line-height: 1.4;
+}
+
+/* Mensagem do sistema (ex: "Carregando...") */
+.chat-message.system {
+  background-color: transparent;
+  color: #999;
+  font-style: italic;
+  font-size: 0.85em;
+  text-align: center;
+  align-self: center;
+}
+
+/* Mensagem do usuário logado */
+.chat-message.user-message {
+  background-color: #5865f2; /* Cor do Discord */
+  color: white;
+  align-self: flex-end; /* Mensagens do usuário à direita */
+}
+
+/* Mensagem de outras pessoas */
+.chat-message.other-message {
+  background-color: #3a3a3e;
+  color: #eee;
+  align-self: flex-start; /* Mensagens de outros à esquerda */
+}
+
+.chat-message-author {
+  font-weight: bold;
+  font-size: 0.8em;
+  display: block;
+  margin-bottom: 3px;
+  color: #aaa;
+}
+
+.chat-message.user-message .chat-message-author {
+  color: #c0c5ff; /* Cor mais clara para o autor da própria msg */
+}
+
+.chat-input-area {
+  display: flex;
+  flex-shrink: 0; /* Não encolhe */
+}
+
+.chat-input {
+  flex-grow: 1;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #444;
+  color: white;
+  margin-right: 8px;
+}
+.chat-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--cor-moldura-celular);
+}
+
+.chat-input:disabled {
+  cursor: not-allowed;
+  background-color: #2a2a2d;
+  color: #777;
+}
+
+.chat-send-btn {
+  border: none;
+  padding: 0 15px;
+  border-radius: 8px;
+  background-color: #5865f2;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 1.1rem;
+}
+.chat-send-btn:hover {
+  background-color: #4752c4;
+}
+.chat-send-btn:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
