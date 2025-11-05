@@ -2,18 +2,21 @@
 let API_BASE_URL = '';
 console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}.`);
 
-import "./style.css";
+import "./style.css"; 
 
 // --- VARIÁVEIS GLOBAIS ---
 let auth;
 let isSdkReady = false;
 let discordSdk = null;
 let DiscordSDK = null;
-let currentChannelId = null; // Armazena o ID do canal atual
+let currentChannelId = null; // Armazena o ID do canal de VOZ atual
+
+// ⭐️ NOVO: ID do canal de CHAT fixo ⭐️
+const RPG_CHAT_CHANNEL_ID = '1420530344884572271';
 
 // --- VARIÁVEIS DE NAVEGAÇÃO ---
 let appElement;
-let batalhaPageHTML;
+let batalhaPageHTML; 
 
 // --- INICIALIZAÇÃO DA APLICAÇÃO ---
 document.addEventListener('DOMContentLoaded', initializeApp);
@@ -24,7 +27,7 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 function initializeApp() {
   appElement = document.querySelector('#app');
   // Armazena o HTML inicial da página de batalha para restauração
-  batalhaPageHTML = appElement.innerHTML;
+  batalhaPageHTML = appElement.innerHTML; 
 
   setupNavigation();
 
@@ -33,31 +36,31 @@ function initializeApp() {
   if (import.meta.env.DEV) {
     // --- MODO NAVEGADOR (DESENVOLVIMENTO) ---
     console.log("🧩 Modo Desenvolvimento: pulando autenticação Discord SDK.");
-    isSdkReady = true;
-    fetchBattleQueue();
+    isSdkReady = true; 
+    fetchBattleQueue(); 
     mockDevelopmentMode();
     initializeChat(); // Inicia o chat em modo 'mock'
-
+  
   } else if (urlParams.has('frame_id')) {
     // --- MODO DISCORD (PRODUÇÃO, DENTRO DO DISCORD) ---
     setupDiscordSdk().then(() => {
       console.log("Discord SDK está autenticado e pronto.");
-      isSdkReady = true;
-
-      currentChannelId = discordSdk.channelId;
+      isSdkReady = true; 
+      
+      currentChannelId = discordSdk.channelId; 
       if (!currentChannelId) {
-        console.error("ERRO CRÍTICO: discordSdk.channelId é nulo. Verifique os scopes ('guilds').");
-        appElement.innerHTML = `<p style="color:red; padding: 2rem;">Erro: Não foi possível obter o ID do canal. Tente reiniciar a atividade.</p>`;
+        console.error("ERRO CRÍTICO: discordSdk.channelId é nulo. Verifique os scopes ('guilds', 'rpc.voice.read').");
+        appElement.innerHTML = `<p style="color:red; padding: 2rem;">Erro: Não foi possível obter o ID do canal de voz. Tente reiniciar a atividade.</p>`;
         return;
       }
-
-      console.log("ID do Canal obtido:", currentChannelId);
-
+      
+      console.log("ID do Canal de Voz obtido:", currentChannelId);
+      
       // Carrega os dados da página de Batalha
       appendUserAvatar();
       appendChannelName();
       fetchBattleQueue();
-      initializeChat(); // Inicia o chat (que mostrará um erro de permissão)
+      initializeChat(); // Inicia o chat (que vai TENTAR carregar)
     }).catch((err) => {
       console.error("Erro fatal no setup do SDK:", err);
       // Mostra o erro dentro do #app
@@ -133,7 +136,7 @@ function updateNavActive(activeButton) {
  * @param {'batalha' | 'ficha' | 'status'} pageName 
  */
 function renderPage(pageName) {
-
+  
   // PAUSA o polling da fila de batalha se não estivermos na página de batalha
   isSdkReady = (pageName === 'batalha');
 
@@ -141,19 +144,19 @@ function renderPage(pageName) {
     case 'batalha':
       // Restaura o HTML original da página de batalha
       appElement.innerHTML = batalhaPageHTML;
-
+      
       // REINICIA o polling (isSdkReady foi setado para true)
       fetchBattleQueue(); // Busca os dados imediatamente
-
+      
       // Re-popula os dados que não são do polling
       if (import.meta.env.DEV) {
-        mockDevelopmentMode();
+        mockDevelopmentMode(); 
       } else if (auth) { // Se estiver autenticado em PROD
         appendUserAvatar();
         appendChannelName();
       }
-
-      // Reinicia o chat (que vai mostrar o erro de permissão)
+      
+      // Reinicia o chat
       initializeChat();
       break;
 
@@ -161,7 +164,7 @@ function renderPage(pageName) {
       appElement.innerHTML = getFichaPageHTML();
       // Tenta buscar os dados dos participantes (DEVE FUNCIONAR AGORA)
       if (!import.meta.env.DEV) {
-        fetchParticipantData();
+         fetchParticipantData();
       }
       break;
 
@@ -224,45 +227,45 @@ function getStatusPageHTML() {
  * (Esta função DEVE funcionar agora, pois temos o scope 'rpc.voice.read').
  */
 async function fetchParticipantData() {
-  const container = document.querySelector('#ficha-container');
-  if (!discordSdk || !currentChannelId) {
-    if (container) container.innerHTML += '<p style="color: red;">SDK do Discord não está pronto ou ID do canal é inválido.</p>';
-    return;
-  }
-
-  try {
-    // Esta chamada DEVE FUNCIONAR AGORA
-    const { participants } = await discordSdk.commands.getChannel({ channel_id: currentChannelId });
-
-    if (!participants || participants.length === 0) {
-      container.innerHTML = '<h3>Fichas</h3><p>Nenhum participante encontrado no canal.</p>';
-      return;
+    const container = document.querySelector('#ficha-container');
+    if (!discordSdk || !currentChannelId) {
+        if (container) container.innerHTML += '<p style="color: red;">SDK do Discord não está pronto ou ID do canal de voz é inválido.</p>';
+        return;
     }
+    
+    try {
+        // Esta chamada DEVE FUNCIONAR AGORA
+        const { participants } = await discordSdk.commands.getChannel({ channel_id: currentChannelId }); 
+        
+        if (!participants || participants.length === 0) {
+            container.innerHTML = '<h3>Fichas</h3><p>Nenhum participante encontrado no canal de voz.</p>';
+            return;
+        }
+        
+        let html = '<h3>Participantes no Canal</h3>';
+        html += '<ul style="list-style: none; padding: 0; text-align: left;">';
+        
+        // Renderiza a lista de participantes
+        participants.forEach(user => {
+            const avatarUrl = user.avatar 
+                ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
+                : `https://cdn.discordapp.com/embed/avatars/${user.discriminator % 5}.png`;
 
-    let html = '<h3>Participantes no Canal</h3>';
-    html += '<ul style="list-style: none; padding: 0; text-align: left;">';
-
-    // Renderiza a lista de participantes
-    participants.forEach(user => {
-      const avatarUrl = user.avatar
-        ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
-        : `https://cdn.discordapp.com/embed/avatars/${user.discriminator % 5}.png`;
-
-      html += `
+            html += `
                 <li style="display: flex; align-items: center; margin-bottom: 10px; background: #333; padding: 10px; border-radius: 8px;">
                     <img src="${avatarUrl}" alt="${user.username}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
                     <span style="font-weight: bold;">${user.global_name || user.username}</span>
                 </li>
             `;
-    });
-    html += '</ul>';
-    container.innerHTML = html;
+        });
+        html += '</ul>';
+        container.innerHTML = html;
 
-  } catch (err) {
-    // Mostra uma mensagem de erro clara
-    console.error("Erro ao buscar participantes:", err);
-    if (container) container.innerHTML = '<h3>Fichas</h3><p style="color: red;">Falha ao carregar. (Verifique se `rpc.voice.read` está marcado no Portal do Dev).</p>';
-  }
+    } catch (err) {
+        // Mostra uma mensagem de erro clara
+        console.error("Erro ao buscar participantes:", err);
+        if (container) container.innerHTML = '<h3>Fichas</h3><p style="color: red;">Falha ao carregar. (Verifique se `rpc.voice.read` está marcado no Portal do Dev).</p>';
+    }
 }
 
 
@@ -270,7 +273,6 @@ async function fetchParticipantData() {
 
 /**
  * Inicializa o chatbox.
- * (Irá mostrar um erro em PROD por falta de scopes).
  */
 function initializeChat() {
   const messagesList = document.querySelector('#chat-messages-list');
@@ -282,27 +284,164 @@ function initializeChat() {
     return;
   }
 
-  // Define a mensagem de erro (diferente para DEV ou PROD)
-  const chatErrorMsg = (import.meta.env.DEV)
-    ? "O chat só funciona quando a atividade é aberta pelo Discord."
-    : "O chat está desabilitado. (O App não tem as permissões `rpc.messages`.)";
+  if (import.meta.env.DEV) {
+    // --- MODO DEV: Simula um chat desabilitado ---
+    messagesList.innerHTML = `
+      <div class="chat-message system">
+        <span class="chat-message-content">O chat só funciona quando a atividade é aberta pelo Discord.</span>
+      </div>`;
+    messageInput.value = "Chat desabilitado no modo DEV";
+    messageInput.disabled = true;
+    sendButton.disabled = true;
+  } else {
+    // --- MODO PROD: Ativa o chat real ---
+    messageInput.disabled = false;
+    sendButton.disabled = false;
+    messageInput.value = "";
+    messageInput.placeholder = "Digite sua mensagem...";
 
-  // Mostra o erro e desabilita o chat.
-  messagesList.innerHTML = `
-    <div class="chat-message system">
-      <span class="chat-message-content" style="color: #f88;">${chatErrorMsg}</span>
-    </div>`;
-  messageInput.value = "Chat desabilitado";
-  messageInput.disabled = true;
-  sendButton.disabled = true;
+    fetchChannelMessages(messagesList);
+    subscribeToChannelMessages(messagesList);
+    setupChatInput(messageInput, sendButton);
+  }
 }
 
-// As funções de chat abaixo existem, mas 'initializeChat' agora impede
-// que elas sejam chamadas, pois o app não tem permissão.
-async function fetchChannelMessages(messagesList) { /* ... */ }
-async function subscribeToChannelMessages(messagesList) { /* ... */ }
-function setupChatInput(messageInput, sendButton) { /* ... */ }
-function renderMessage(message, messagesList) { /* ... */ }
+/**
+ * Busca as 7 últimas mensagens do canal de CHAT FIXO.
+ */
+async function fetchChannelMessages(messagesList) {
+  if (!discordSdk || !RPG_CHAT_CHANNEL_ID || !auth) {
+    console.warn("SDK, ID do Canal de Chat ou Auth não estão prontos para buscar mensagens.");
+    return;
+  }
+  
+  try {
+    // ⭐️ MUDANÇA: Usa o ID do canal de chat fixo
+    const { messages } = await discordSdk.commands.getChannelMessages({
+      channel_id: RPG_CHAT_CHANNEL_ID,
+      limit: 7,
+    });
+    
+    messagesList.innerHTML = '';
+    messages.reverse().forEach(message => renderMessage(message, messagesList));
+    
+  } catch (err) {
+    // Isto VAI FALHAR se o app não tiver o scope 'rpc.messages.read'
+    console.error("Erro ao buscar histórico de mensagens:", err);
+    messagesList.innerHTML = `
+      <div class="chat-message system">
+        <span class="chat-message-content" style="color: #f88;">Falha ao carregar histórico. (App requer scope 'rpc.messages.read')</span>
+      </div>`;
+  }
+}
+
+/**
+ * Subscreve a novas mensagens do canal de CHAT FIXO.
+ */
+async function subscribeToChannelMessages(messagesList) {
+  if (!discordSdk) return;
+  try {
+    // ⭐️ MUDANÇA: Usa o ID do canal de chat fixo
+    await discordSdk.commands.subscribe('MESSAGE_CREATE', (evt) => {
+      const message = evt.data.message;
+      // Só renderiza se a mensagem for do canal de chat que estamos vendo
+      if (message.channel_id === RPG_CHAT_CHANNEL_ID) {
+        renderMessage(message, messagesList);
+      }
+    }, { channel_id: RPG_CHAT_CHANNEL_ID });
+
+    console.log("Inscrito para novas mensagens no canal:", RPG_CHAT_CHANNEL_ID);
+  } catch(err) {
+    // Isto VAI FALHAR se o app não tiver o scope 'rpc.messages.subscribe'
+    console.error("Falha ao se inscrever nas mensagens:", err);
+    messagesList.innerHTML += `
+      <div class="chat-message system">
+        <span class="chat-message-content" style="color: #f88;">Falha ao subscrever. (App requer scope 'rpc.messages.subscribe')</span>
+      </div>`;
+  }
+}
+
+/**
+ * Configura o input para enviar mensagens para o canal de CHAT FIXO.
+ */
+function setupChatInput(messageInput, sendButton) {
+  const sendMessage = async () => {
+    const content = messageInput.value;
+    let messagesList = document.querySelector('#chat-messages-list');
+    
+    if (content.trim() === "" || !discordSdk) return;
+
+    try {
+      messageInput.disabled = true;
+      sendButton.disabled = true;
+
+      // ⭐️ MUDANÇA: Usa o ID do canal de chat fixo
+      await discordSdk.commands.sendChannelMessage({
+        channel_id: RPG_CHAT_CHANNEL_ID,
+        content: content,
+      });
+      
+      messageInput.value = "";
+
+    } catch (err) {
+      // Isto VAI FALHAR se o app não tiver o scope 'rpc.messages.send'
+      console.error("Erro ao enviar mensagem:", err);
+       messagesList.innerHTML += `
+      <div class="chat-message system">
+        <span class="chat-message-content" style="color: #f88;">Falha ao enviar. (App requer scope 'rpc.messages.send')</span>
+      </div>`;
+    } finally {
+      messageInput.disabled = false;
+      sendButton.disabled = false;
+      messageInput.focus();
+    }
+  };
+
+  sendButton.onclick = sendMessage; 
+
+  messageInput.onkeydown = (e) => { 
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+}
+
+/**
+ * Renderiza uma única mensagem no chatbox.
+ */
+function renderMessage(message, messagesList) {
+  if (!auth) { 
+    console.warn("Auth não está pronto, não é possível renderizar a mensagem.");
+    return;
+  }
+
+  const messageEl = document.createElement('div');
+  
+  const messageType = (message.author.id === auth.user.id) ? 'user-message' : 'other-message';
+  
+  messageEl.classList.add('chat-message', messageType);
+
+  let authorHTML = '';
+  if (messageType === 'other-message') {
+    authorHTML = `<span class="chat-message-author">${message.author.global_name || message.author.username}</span>`;
+  }
+  
+  // Simples sanitização para evitar injeção de HTML
+  const safeContent = message.content
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  messageEl.innerHTML = `
+    ${authorHTML}
+    <span class="chat-message-content">${safeContent}</span>
+  `;
+  
+  messagesList.appendChild(messageEl);
+  
+  // Rola para o final
+  messagesList.scrollTop = messagesList.scrollHeight;
+}
 
 
 // --- FUNÇÕES DE PRODUÇÃO (SDK DO DISCORD) ---
@@ -311,29 +450,34 @@ function renderMessage(message, messagesList) { /* ... */ }
  * Configura o SDK do Discord, autentica e obtém o token.
  */
 async function setupDiscordSdk() {
-
+  
   // Carrega o SDK
   const sdkModule = await import("@discord/embedded-app-sdk");
   DiscordSDK = sdkModule.DiscordSDK;
   discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
   console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT_ID);
-
+  
   await discordSdk.ready();
   console.log("Discord SDK is ready");
 
-  // ⭐️⭐️⭐️ A CORREÇÃO ESTÁ AQUI ⭐️⭐️⭐️
-  // Pedimos 'rpc.voice.read' (que você marcou)
-  // Removemos 'rpc' e 'rpc.messages.*' (que estavam a causar o erro)
+  // ⭐️⭐️⭐️ ATENÇÃO ⭐️⭐️⭐️
+  // Para esta nova lógica de chat funcionar, precisamos pedir
+  // os scopes 'rpc.messages.*' novamente.
+  // ISTO VAI FAZER O ERRO '400 Bad Request (invalid_scope)' VOLTAR,
+  // pois o seu app não tem permissão para eles.
   const { code } = await discordSdk.commands.authorize({
     client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
     response_type: "code",
     state: "",
     prompt: "none",
     scope: [
-      "identify",
+      "identify", 
       "guilds",
-      "rpc.voice.read" // <-- Pedimos este, pois você o marcou na sua imagem.
-    ],
+      "rpc.voice.read",        // Para a página de Ficha
+      "rpc.messages.read",       // Para o Chat (VAI FALHAR)
+      "rpc.messages.subscribe",  // Para o Chat (VAI FALHAR)
+      "rpc.messages.send"        // Para o Chat (VAI FALHAR)
+    ], 
   });
 
   console.log("Código de autorização recebido:", code);
@@ -367,13 +511,12 @@ async function setupDiscordSdk() {
 async function appendChannelName() {
   const app = document.querySelector('#channel-name');
   if (!app) return; // Não tenta atualizar se o elemento não existir
-
+  
   let activityChannelName = 'Unknown';
-
-  // O 'guilds' scope deve ser suficiente para obter o channelId
-  if (currentChannelId && discordSdk?.guildId) {
+  
+  // O 'currentChannelId' é o do canal de VOZ
+  if (currentChannelId && discordSdk?.guildId) { 
     try {
-      // Esta chamada DEVE FUNCIONAR AGORA (com 'rpc.voice.read')
       const channel = await discordSdk.commands.getChannel({ channel_id: currentChannelId });
       if (channel?.name) activityChannelName = channel.name;
     } catch (error) {
@@ -391,7 +534,7 @@ async function appendUserAvatar() {
   const logoImg = document.querySelector('img.logo');
   if (!logoImg || !auth) return; // Não tenta atualizar se não houver <img> ou auth
 
-  const user = auth.user;
+  const user = auth.user; 
 
   let avatarUrl;
   if (user.avatar) {
@@ -420,13 +563,13 @@ async function fetchBattleQueue() {
   if (import.meta.env.DEV) {
     channelId = new URLSearchParams(window.location.search).get('channel_id');
   } else {
-    channelId = currentChannelId; // Usa a var global
+    channelId = currentChannelId; // Usa a var global (canal de VOZ)
   }
 
   if (!channelId) {
     const helpText = import.meta.env.DEV
       ? `<p style="color:#faa;">ID do Canal não fornecido.<br/>Adicione <strong>?channel_id=12345...</strong> ao seu URL para testar.</p>`
-      : "<p style='color:red;'>ID do Canal não encontrado. Verifique os scopes.</p>";
+      : "<p style='color:red;'>ID do Canal de Voz não encontrado.</p>";
     if (turnOrderContainer) turnOrderContainer.innerHTML = helpText;
     return;
   }
@@ -444,7 +587,7 @@ async function fetchBattleQueue() {
     let filaObjeto = battleData.fila;
     if (!filaObjeto || typeof filaObjeto !== 'object') filaObjeto = {};
 
-    let fila = Object.values(filaObjeto);
+    let fila = Object.values(filaObjeto); 
     const jogadorAtual = battleData.jogadorAtual;
 
     if (jogadorAtual) {
