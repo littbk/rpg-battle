@@ -9,7 +9,8 @@ let auth;
 let isSdkReady = false;
 let discordSdk = null;
 let DiscordSDK = null;
-let currentChannelId = null; // ⭐️ NOVO: Armazena o ID do canal atual
+const mainChannelId = '1420530344884572271'
+let currentChannelId = ''
 
 // --- VARIÁVEIS DE NAVEGAÇÃO ---
 let appElement;
@@ -41,7 +42,7 @@ function initializeApp() {
     setupDiscordSdk().then(() => {
       console.log("Discord SDK está autenticado e pronto.");
       isSdkReady = true; 
-      currentChannelId = discordSdk.channelId; // ⭐️ NOVO: Salva o ID do canal
+      //currentChannelId = discordSdk.channelId; // ⭐️ NOVO: Salva o ID do canal
       
       // Carrega os dados da página de Batalha
       appendUserAvatar();
@@ -273,7 +274,7 @@ function initializeChat() {
 }
 
 async function fetchChannelMessages(messagesList) {
-  if (!discordSdk || !currentChannelId || !auth) {
+  if (!discordSdk || !mainChannelId || !auth) {
     console.warn("SDK, ChannelID ou Auth não estão prontos para buscar mensagens.");
     return;
   }
@@ -281,7 +282,7 @@ async function fetchChannelMessages(messagesList) {
   try {
     // Busca as 7 últimas mensagens
     const { messages } = await discordSdk.commands.getChannelMessages({
-      channel_id: currentChannelId,
+      channel_id: mainChannelId,
       limit: 7,
     });
     
@@ -311,12 +312,12 @@ async function subscribeToChannelMessages(messagesList) {
   await discordSdk.commands.subscribe('MESSAGE_CREATE', (evt) => {
     const message = evt.data.message;
     // Só renderiza se a mensagem for do canal que estamos vendo
-    if (message.channel_id === currentChannelId) {
+    if (message.channel_id === mainChannelId) {
       renderMessage(message, messagesList);
     }
-  }, { channel_id: currentChannelId });
+  }, { channel_id: mainChannelId });
 
-  console.log("Inscrito para novas mensagens no canal:", currentChannelId);
+  console.log("Inscrito para novas mensagens no canal:", mainChannelId);
 }
 
 function setupChatInput(messageInput, sendButton) {
@@ -331,7 +332,7 @@ function setupChatInput(messageInput, sendButton) {
       sendButton.disabled = true;
 
       await discordSdk.commands.sendChannelMessage({
-        channel_id: currentChannelId,
+        channel_id: mainChannelId,
         content: content,
       });
       
