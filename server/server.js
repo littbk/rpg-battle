@@ -146,8 +146,9 @@ app.get("/api/get-player-data", async (req, res) => {
 
 app.get("/api/get-battle-queue", async (req, res) => {
   try {
+    
     // 9. SINTAXE DE QUERY MUDOU
-    const query = 'SELECT * FROM Batalhas WHERE id = $1';
+    const query = 'SELECT * FROM "Batalhas" WHERE id = $1'; // <-- Com aspas, ele procura "Batalhas"
     const result = await pool.query(query, [1]); // Usando 1 como parâmetro
 
     const battleData = result.rows[0];

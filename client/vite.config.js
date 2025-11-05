@@ -26,21 +26,14 @@ export default defineConfig({
     ],
 
     proxy: {
-      // CORREÇÃO 2: O alvo do proxy mudou.
-      // Agora, qualquer chamada para /api...
       '/api': {
         // ...será redirecionada para o seu backend LOCAL na porta 3001.
         target: 'http://localhost:3001', 
         changeOrigin: true,
         secure: false,
       },
-      
-      // NOTA: Removi o proxy '/.proxy' por ser provavelmente redundante.
-      // Se você realmente o utiliza, pode adicioná-lo de volta
-      // com o target 'http://localhost:3001'.
+
     },
-    
-    // Removemos o 'server.cors' na última etapa, e isso continua correto.
-    // O proxy é a forma certa de lidar com o CORS em desenvolvimento.
+  
   },
 });

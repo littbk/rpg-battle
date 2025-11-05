@@ -1,46 +1,82 @@
-// --- LÓGICA DA API (CORRIGIDA) ---
-// Esta é a lógica correta que decide qual API chamar.
-const PRODUCTION_URL = import.meta.env.VITE_API_URL;
-
-// ⚠️ CORREÇÃO 1: A sua sintaxe aqui estava errada.
-// Esta é a lógica correta: 'import.meta.env.DEV' é a condição.
-const API_BASE_URL = ''; // SEMPRE Vazio
-
+// --- CONFIGURAÇÃO BASE ---
+let API_BASE_URL = '';
 console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}. API Base: ${API_BASE_URL || 'Relativa (mesmo domínio)'}`);
 
-
-import { DiscordSDK } from "@discord/embedded-app-sdk";
 import rocketLogo from '/rocket.png';
 import "./style.css";
 
 // --- VARIÁVEIS GLOBAIS ---
 let auth;
 let isSdkReady = false;
+let discordSdk = null;
+let DiscordSDK = null;
 
-const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
-console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT_ID);
+// --- IMPORTA SDK SOMENTE EM PRODUÇÃO (DENTRO DO DISCORD) ---
+if (!import.meta.env.DEV) {
+  const sdkModule = await import("@discord/embedded-app-sdk");
+  DiscordSDK = sdkModule.DiscordSDK;
+  discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
+  console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT_ID);
+}
+
+// =================================================================
+// ⭐️ CORREÇÃO: MOVIDO PARA CIMA ⭐️
+// Injetamos o HTML base e o CSS imediatamente.
+// Isso garante que os elementos como '#turn-order-list' existam
+// ANTES que qualquer função (como fetchBattleQueue) tente usá-los.
+// =================================================================
+document.querySelector('#app').innerHTML = `
+<div>
+ <img src="${rocketLogo}" class="logo" alt="Discord" />
+ <h2 id="activity-channel"></h2>
+ 
+ <h3>Ordem de Turno</h3>
+ <div id="turn-order-list">
+<p>Carregando...</p>
+ </div>
+ <h3 id="channel-name"></h3>
+</div>
+`;
+
+// Adiciona o CSS para as setas
+const styleSheet = document.createElement("style");
+styleSheet.innerText = `
+ .turn-list { list-style-type: none; padding-left: 5px; font-size: 1.1em; }
+ .turn-list li { margin-bottom: 5px; }
+ .prioritario { font-weight: bold; color: white; }
+`;
+document.head.appendChild(styleSheet);
+// --- FIM DA SEÇÃO MOVIDA ---
 
 
-// --- INICIALIZAÇÃO DA APLICAÇÃO ---
-setupDiscordSdk().then(() => {
-  console.log("Discord SDK está autenticado e pronto.");
+// --- INICIALIZAÇÃO ---
+// Agora que o HTML existe, podemos chamar as funções com segurança.
+if (import.meta.env.DEV) {
+  // --- MODO NAVEGADOR (DESENVOLVIMENTO) ---
+  console.log("🧩 Modo Desenvolvimento: pulando autenticação Discord SDK.");
+  isSdkReady = true; // Dizemos que "está pronto" para o loop de polling
+  fetchBattleQueue(); // Busca a fila imediatamente
+  mockDevelopmentMode(); // Apenas simula o avatar e o nome do canal
+} else {
+  // --- MODO DISCORD (PRODUÇÃO) ---
+  setupDiscordSdk().then(() => {
+    console.log("Discord SDK está autenticado e pronto.");
+    isSdkReady = true;
+    appendUserAvatar();
+    appendChannelName();
+    fetchBattleQueue(); // Busca a fila imediatamente
+  }).catch((err) => {
+    console.error("Erro fatal no setup do SDK:", err);
+    // Esta parte agora funciona, pois '#app' já existe.
+    document.querySelector('#app').innerHTML = `
+<p style="color:red; max-width: 400px;">
+Erro fatal no setup do SDK.<br/>Verifique o console (Ctrl+Shift+I).
+</p>`;
+  });
+}
 
-  isSdkReady = true;
 
-  // Funções que só rodam UMA VEZ
-  appendUserAvatar();
-  appendChannelName();
-
-  // Chame a fila uma vez imediatamente
-  fetchBattleQueue();
-
-}).catch((err) => {
-  console.error("Erro fatal no setup do SDK:", err);
-  // Esta mensagem de erro personalizada é ótima!
-  document.querySelector('#app').innerHTML = `<p style="color:red; max-width: 400px;">Erro fatal no setup do SDK. Verifique o console (Ctrl+Shift+I).<br/><br/>Causas comuns:<br/>1. API (Servidor) está offline.<br/>2.<br/>3. Erro de CORS/CSP (Verifique as Configurações da Atividade no Discord).</p>`;
-});
-
-
+// --- FUNÇÕES DE PRODUÇÃO (SÓ RODAM NO DISCORD) ---
 async function setupDiscordSdk() {
   await discordSdk.ready();
   console.log("Discord SDK is ready");
@@ -55,7 +91,6 @@ async function setupDiscordSdk() {
 
   console.log("Código de autorização recebido:", code);
 
-  // Busca o access_token do nosso backend (Render ou local)
   const response = await fetch(`${API_BASE_URL}/api/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -70,40 +105,21 @@ async function setupDiscordSdk() {
   }
 
   const { access_token } = await response.json();
-
-  // Autentica com o cliente Discord
   auth = await discordSdk.commands.authenticate({ access_token });
 
-  if (auth == null) {
-    throw new Error("Authenticate command failed");
-  }
+  if (!auth) throw new Error("Authenticate command failed");
   console.log("Autenticação com o SDK concluída.");
 }
-
-// Injeta o HTML base na página
-document.querySelector('#app').innerHTML = `
-  <div>
-    <img src="${rocketLogo}" class="logo" alt="Discord" />
-    <h2 id="activity-channel"></h2>
-    
-    <h3>Ordem de Turno</h3>
-    <div id="turn-order-list">
-      <p>Carregando fila de batalha...</p>
-    </div>
-    <h3 id="channel-name"></h3>
-  </div>
-`;
-
 
 async function appendChannelName() {
   const app = document.querySelector('#channel-name');
   if (app) app.innerHTML = '<p>Carregando nome do canal...</p>';
 
   let activityChannelName = 'Unknown';
-  if (discordSdk.channelId && discordSdk.guildId) {
+  if (discordSdk?.channelId && discordSdk?.guildId) {
     try {
       const channel = await discordSdk.commands.getChannel({ channel_id: discordSdk.channelId });
-      if (channel && channel.name) activityChannelName = channel.name;
+      if (channel?.name) activityChannelName = channel.name;
     } catch (error) {
       console.error("Erro RPC. Falha ao obter o canal.", error);
       activityChannelName = "Canal da Atividade (RPC Falhou)";
@@ -111,12 +127,11 @@ async function appendChannelName() {
   } else {
     activityChannelName = "Fora de Contexto de Atividade";
   }
-  const textTagString = `Canal: "${activityChannelName}"`;
+
   const textTag = document.createElement('p');
-  textTag.textContent = textTagString;
+  textTag.textContent = `Canal: "${activityChannelName}"`;
   if (app) app.innerHTML = textTag.outerHTML;
 }
-
 
 async function appendUserAvatar() {
   const logoImg = document.querySelector('img.logo');
@@ -124,12 +139,13 @@ async function appendUserAvatar() {
     console.warn("appendUserAvatar chamado sem autenticação ou sem <img>");
     return;
   }
+
   const user = await fetch(`https://discord.com/api/v10/users/@me`, {
     headers: {
       Authorization: `Bearer ${auth.access_token}`,
       'Content-Type': 'application/json',
     },
-  }).then((response) => response.json());
+  }).then((r) => r.json());
 
   let avatarUrl;
   if (user.avatar) {
@@ -138,6 +154,7 @@ async function appendUserAvatar() {
     const defaultAvatarIndex = (user.discriminator || 0) % 5;
     avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
   }
+
   logoImg.src = avatarUrl;
   logoImg.alt = `${user.username} avatar`;
   logoImg.width = 128;
@@ -145,89 +162,99 @@ async function appendUserAvatar() {
   logoImg.style.borderRadius = '50%';
 }
 
-
+// --- FUNÇÃO UNIVERSAL (RODA EM AMBOS OS MODOS) ---
 async function fetchBattleQueue() {
-  const channelId = discordSdk.channelId;
+  console.log("Buscando fila de batalha...");
+  // Agora este seletor vai funcionar, pois o HTML foi injetado primeiro.
   const turnOrderContainer = document.querySelector('#turn-order-list');
 
+  let channelId;
+  if (import.meta.env.DEV) {
+    channelId = new URLSearchParams(window.location.search).get('channel_id');
+  } else {
+    channelId = 12345;
+  }
+
   if (!channelId) {
-    if (turnOrderContainer) turnOrderContainer.innerHTML = "<p>ID do Canal não encontrado.</p>";
+    const helpText = import.meta.env.DEV
+      ? `<p style="color:#faa;">ID do Canal não fornecido.<br/>Adicione <strong>?channel_id=12345...</strong> ao seu URL para testar.</p>`
+      : "<p>ID do Canal não encontrado (Erro do SDK).</p>";
+
+    // Esta linha agora é segura
+    if (turnOrderContainer) turnOrderContainer.innerHTML = helpText;
     return;
   }
 
   try {
+  
     const response = await fetch(`${API_BASE_URL}/api/get-battle-queue?channel=${channelId}`);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Erro do servidor: ${response.status} - ${errorText}`);
+      const errorData = await response.text();
+      console.error("Erro do Servidor:", errorData);
+      throw new Error(`Erro do servidor: ${response.status}`);
     }
 
     const battleData = await response.json();
-    console.log('Dados da fila recebidos:', battleData);
-
-    // ⚠️ CORREÇÃO 2: O BUG DO JSON.PARSE
-    // Com PostgreSQL (JSONB), o battleData.fila JÁ É UM OBJETO (ou array), não uma string.
-    // Remover o JSON.parse() e o bloco try/catch desnecessário corrige o erro.
     let filaObjeto = battleData.fila;
+    if (!filaObjeto || typeof filaObjeto !== 'object') filaObjeto = {};
 
-    if (!filaObjeto || typeof filaObjeto !== 'object' || Array.isArray(filaObjeto)) {
-      console.warn("Os dados da 'fila' não vieram como um Objeto. A ser tratado como vazio.");
-      filaObjeto = {};
-    }
-
-    // Agora, convertemos o Objeto num Array para podermos .filter() e .sort()
     let fila = Object.values(filaObjeto);
-
     const jogadorAtual = battleData.jogadorAtual;
 
     if (jogadorAtual) {
-      const indiceDoJogador = fila.findIndex(jogador =>
-        jogador.nome === jogadorAtual
-      );
-      if (indiceDoJogador !== -1) {
-        const [jogadorPrioritario] = fila.splice(indiceDoJogador, 1);
+      const idx = fila.findIndex(j => j.nome === jogadorAtual);
+      if (idx !== -1) {
+        const [jogadorPrioritario] = fila.splice(idx, 1);
         jogadorPrioritario.step = 9999;
         fila.unshift(jogadorPrioritario);
       }
     }
 
-    const lutadoresAtivos = fila.filter(p => p.ativo === true);
-    lutadoresAtivos.sort((a, b) => b.step - a.step);
-
-    if (lutadoresAtivos.length > 0) {
-      // Pega o lutador prioritário (quem joga agora)
-      const lutadorPrioritario = lutadoresAtivos.shift();
-
-      // Cria o HTML para o lutador prioritário (Seta + ID + Nome)
-      const primeiroItemHtml = `<li class="prioritario">➡️ [${lutadorPrioritario.battlerId}] <strong>${lutadorPrioritario.nome}</strong></li>`;
-
-      // Cria o HTML para os outros (Seta + ID + Nome)
-      // Usamos &rarr; (→) para os demais
-      const restanteItensHtml = lutadoresAtivos.map(player =>
-        `<li>&rarr; [${player.battlerId}] ${player.nome}</li>`
-      ).join('');
-
-      // Muda de <ol> (lista ordenada) para <ul> (lista com setas)
-      const htmlList = `<ul class="turn-list">${primeiroItemHtml}${restanteItensHtml}</ul>`;
-
-      turnOrderContainer.innerHTML = htmlList;
+    const ativos = fila.filter(p => p.ativo).sort((a, b) => b.step - a.step);
+    if (ativos.length > 0) {
+      const atual = ativos.shift();
+      const htmlList = `
+    <ul class="turn-list">
+     <li class="prioritario">➡️ [${atual.battlerId}] <strong>${atual.nome}</strong></li>
+     ${ativos.map(p => `<li>&rarr; [${p.battlerId}] ${p.nome}</li>`).join('')}
+    </ul>`;
+      // Esta linha agora é segura
+      if (turnOrderContainer) turnOrderContainer.innerHTML = htmlList;
     } else {
-      turnOrderContainer.innerHTML = "<p>Nenhum lutador ativo na fila.</p>";
+      // Esta linha agora é segura
+      if (turnOrderContainer) turnOrderContainer.innerHTML = "<p>Nenhum lutador ativo na fila.</p>";
     }
-
   } catch (error) {
-    console.error("Falha ao buscar fila de batalha:", error);
+    console.error("Falha ao buscar fila:", error);
+    // Esta linha agora é segura
     if (turnOrderContainer) {
-      turnOrderContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
+      turnOrderContainer.innerHTML = `<p style="color:red;">Falha ao buscar dados.<br/>${error.message}</p>`;
     }
   }
 }
 
-// --- LOOP DE ATUALIZAÇÃO (POLLING) ---
-setInterval(() => {
-  if (isSdkReady) {
-    fetchBattleQueue();
-  }
-}, 2000); // 2000ms = 2 segundos.
+// --- MODO DESENVOLVIMENTO (CORRIGIDO) ---
+function mockDevelopmentMode() {
+  isSdkReady = true;
+  console.log("Simulando ambiente local (avatar e nome do canal).");
 
+  // Simula o avatar
+  const logoImg = document.querySelector('img.logo');
+  if (logoImg) {
+    logoImg.src = "https://i.sstatic.net/EYX0L.png";
+    logoImg.alt = "Avatar do Servidor";
+    logoImg.width = 108;
+    logoImg.height = 500;
+    logoImg.style.borderRadius = "70%";
+  }
+
+  // Simula o nome do canal
+  const channelElement = document.querySelector('#channel-name');
+  if (channelElement) channelElement.innerHTML = `<p>Canal: "ambiente-dev"</p>`;
+}
+
+// --- LOOP DE ATUALIZAÇÃO (UNIVERSAL) ---
+setInterval(() => {
+  if (isSdkReady) fetchBattleQueue();
+}, 2000);
