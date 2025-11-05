@@ -1,43 +1,36 @@
+
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  
+  --cor-fundo-app: #242424;
+  --cor-fundo-desktop: #3f3f46;
+  --cor-moldura-celular: #1a1a1a;
+  --cor-texto: rgba(255, 255, 255, 0.87);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
+html, body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
+  height: 100%; 
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color: var(--cor-texto);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+
+.phone-container {
+  width: 100%;
+  height: 100%;
+  background-color: var(--cor-fundo-app);
+}
+
+.screen {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto; 
+  position: relative;
 }
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
   padding: 2rem;
   text-align: center;
 }
@@ -51,61 +44,126 @@ h1 {
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
-.logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #f7df1eaa);
-}
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-.prioritario {
-    font-size: 1.15em;    /* Torna o nome um pouco maior */
-    color: #FFD700;       /* Cor de destaque (ex: Dourado) */
-    text-transform: uppercase; /* Opcional: Coloca em maiúsculas */
-}
 
 .turn-list {
-  list-style-type: none; /* Remove os bullets padrão */
-  padding-left: 5px; /* Remove o padding da lista */
+  list-style-type: none;
+  padding-left: 5px;
   font-size: 1.1em;
 }
 .turn-list li {
-  margin-bottom: 5px; /* Espaçamento entre os itens */
+  margin-bottom: 5px;
 }
 .prioritario {
   font-weight: bold;
-  color: white; /* Destaca o jogador atual */
+  color: white;
 }
 
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+@media (min-width: 600px) {
+  
+  
+  body {
+    background-color: var(--cor-fundo-desktop);
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
-  /* Exemplo de CSS para a classe prioritario */
+  .phone-container {
+    width: 375px;
+    height: 812px; 
+    
+    background-color: var(--cor-moldura-celular);
+    border-radius: 40px;
+    padding: 12px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transition: all 0.3s ease;
+  }
 
+  
+  .screen {
+    width: 100%;
+    height: 100%;
+    background-color: var(--cor-fundo-app);
+    border-radius: 28px; /* Cantos arredondados da tela interna */
+    position: relative;
+    overflow: hidden; /* Esconde qualquer coisa que vaze da "tela" */
+  }
+
+  /* Adiciona o "notch" (entalhe) falso na parte de cima */
+  .screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 130px;
+    height: 25px;
+    background-color: var(--cor-moldura-celular);
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    z-index: 10;
+  }
+
+  #app {
+    padding: 1.5rem; /* Um pouco menos de padding */
+    height: 100%; /* Garante que ocupe a "tela" inteira */
+    box-sizing: border-box; /* Faz o padding não "estourar" a altura */
+    
+    overflow-y: auto;
+  }
+}
+
+.navbar {
+  background-color: #333;
+  overflow: hidden;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+}
+
+.navbar {
+  /* Posicionamento */
+  position: absolute;  /* Fixa a barra em relação ao pai (.screen) */
+  bottom: 0;           /* Gruda no fundo */
+  left: 0;
+  width: 100%;
+  
+  /* Estilos */
+  background-color: #333;
+  overflow: hidden;
+
+  /* Bônus: Usando Flexbox para alinhar os links (melhor que 'float') */
+  display: flex;
+  justify-content: space-around; /* Distribui os links igualmente */
+}
+
+/* 2. OS LINKS (O SEU CÓDIGO, SÓ REMOVI O 'float') */
+.navbar a {
+  /* float: left; <-- Removido, pois 'flex' é melhor */
+  display: block;
+  color: #f2f2f2;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  font-size: 17px;
+
+  flex-grow: 1; 
+}
+
+.navbar a:hover {
+  background-color: #ddd;
+  color: black;
+}
+
+.navbar a.active {
+  background-color: #04AA6D;
+  color: white;
+}
+
+
+
+#app {
+  padding-bottom: 60px;
 }

@@ -164,15 +164,6 @@ app.get("/api/get-battle-queue", async (req, res) => {
   }
 });
 
-/*
-app.get("/api/retornar-ficha", async (req, res) => {
-  // ... Este código também precisaria ser migrado para usar pool.query ...
-});
-*/
-
 app.listen(port, () => {
-  // 10. A porta 10000 (do Render) não é acessível publicamente. 
-  // O Render faz o proxy para 443 (https) automaticamente.
-  // O localhost:3001 é para si.
   console.log(`Servidor a ouvir na porta ${port}`);
 });

@@ -2,7 +2,6 @@
 let API_BASE_URL = '';
 console.log(`[INIT] Modo de ${import.meta.env.DEV ? 'Desenvolvimento' : 'Produção'}. API Base: ${API_BASE_URL || 'Relativa (mesmo domínio)'}`);
 
-import rocketLogo from '/rocket.png';
 import "./style.css";
 
 // --- VARIÁVEIS GLOBAIS ---
@@ -18,36 +17,6 @@ if (!import.meta.env.DEV) {
   discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
   console.log('Cliente ID do Discord (VITE):', import.meta.env.VITE_DISCORD_CLIENT_ID);
 }
-
-// =================================================================
-// ⭐️ CORREÇÃO: MOVIDO PARA CIMA ⭐️
-// Injetamos o HTML base e o CSS imediatamente.
-// Isso garante que os elementos como '#turn-order-list' existam
-// ANTES que qualquer função (como fetchBattleQueue) tente usá-los.
-// =================================================================
-document.querySelector('#app').innerHTML = `
-<div>
- <img src="${rocketLogo}" class="logo" alt="Discord" />
- <h2 id="activity-channel"></h2>
- 
- <h3>Ordem de Turno</h3>
- <div id="turn-order-list">
-<p>Carregando...</p>
- </div>
- <h3 id="channel-name"></h3>
-</div>
-`;
-
-// Adiciona o CSS para as setas
-const styleSheet = document.createElement("style");
-styleSheet.innerText = `
- .turn-list { list-style-type: none; padding-left: 5px; font-size: 1.1em; }
- .turn-list li { margin-bottom: 5px; }
- .prioritario { font-weight: bold; color: white; }
-`;
-document.head.appendChild(styleSheet);
-// --- FIM DA SEÇÃO MOVIDA ---
-
 
 // --- INICIALIZAÇÃO ---
 // Agora que o HTML existe, podemos chamar as funções com segurança.
@@ -257,4 +226,4 @@ function mockDevelopmentMode() {
 // --- LOOP DE ATUALIZAÇÃO (UNIVERSAL) ---
 setInterval(() => {
   if (isSdkReady) fetchBattleQueue();
-}, 2000);
+}, 20000);

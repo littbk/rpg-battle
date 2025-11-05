@@ -1,13 +1,45 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hello, World</title>
+    
+    <link rel="stylesheet" href="/style.css" />
+    <title>Ordem de Turno</title>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/main.js"></script>
+
+   <div class="phone-container">
+  <div class="screen">
+    
+    <div id="app">
+      <img src="/rocket.png" class="logo" alt="Avatar do Servidor" />
+      <h2 id="activity-channel"></h2>
+    
+      <h3>Ordem de Turno</h3>
+      <div id="turn-order-list">
+        <p>Carregando...</p>
+      </div>
+      <h3 id="channel-name"></h3>
+    </div>
+    
+    <div class="navbar">
+      <a href="#" class="active">Batalha</a>
+      <a href="#">Ficha</a>
+      <a href="#">Status do Time</a>
+    </div>
+
+  </div> </div>  <script type="module" src="/main.js"></script>
+
+         
   </body>
+
+  <footer>
+
+
+
+  </footer>
+
+
 </html>
