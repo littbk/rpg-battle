@@ -14,27 +14,45 @@
       <div class="screen">
         
         <!-- 
-          Este é o conteúdo da sua página "Batalha".
-          Ele será carregado por padrão e armazenado pelo JS.
+          O #app agora é dividido em duas seções:
+          1. O conteúdo da batalha
+          2. O container do chat
         -->
         <div id="app">
-          <img src="/rocket.png" class="logo" alt="Avatar do Servidor" />
-          <h2 id="activity-channel"></h2>
-        
-          <h3>Ordem de Turno</h3>
-          <div id="turn-order-list">
-            <p>Carregando...</p>
+
+          <!-- 1. Conteúdo da Batalha (o que você já tinha) -->
+          <div class="batalha-content">
+            <img src="/rocket.png" class="logo" alt="Avatar do Servidor" />
+            <h2 id="activity-channel"></h2>
+          
+            <h3>Ordem de Turno</h3>
+            <div id="turn-order-list">
+              <p>Carregando...</p>
+            </div>
+            <h3 id="channel-name"></h3>
           </div>
-          <h3 id="channel-name"></h3>
-        </div>
+
+          <!-- 2. Novo Chatbox -->
+          <div class="chat-container">
+            <div class="chat-messages" id="chat-messages-list">
+              <!-- Mensagens serão injetadas aqui pelo main.js -->
+              <div class="chat-message system">
+                <span class="chat-message-content">Carregando histórico de mensagens...</span>
+              </div>
+            </div>
+            <div class="chat-input-area">
+              <input type="text" id="chat-message-input" placeholder="Digite sua mensagem...">
+              <button id="chat-send-btn" title="Enviar">➡️</button>
+            </div>
+          </div>
+
+        </div> <!-- fim #app -->
         
-        <!-- 
-          Navbar com os novos botões e IDs
-        -->
+        <!-- Navbar (permanece igual) -->
         <div class="navbar">
-          <a href="#" id="nav-batalha" class="active btnMenu">Batalha</a>
-          <a href="#" id="nav-ficha" class="btnMenu">Ficha</a>
-          <a href="#" id="nav-status" class="btnMenu">Status</a>
+          <a href="#" id="nav-batalha" class="active">Batalha</a>
+          <a href="#" id="nav-ficha">Ficha</a>
+          <a href="#" id="nav-status">Status</a>
         </div>
 
       </div> <!-- fim .screen -->
