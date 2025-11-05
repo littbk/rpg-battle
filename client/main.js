@@ -122,24 +122,13 @@ function renderPage(pageName) {
 // (Esta seção permanece IDÊNTICA - Nenhuma mudança aqui)
 
 function getFichaPageHTML() {
-  const commonStyles = 'padding: 2rem; text-align: center;';
 
-  if (import.meta.env.DEV) {
     return `
-      <div style="${commonStyles}">
-        <h3>Ficha do Personagem (DEV)</h3>
-        <p>Em modo de desenvolvimento, os dados da ficha não são carregados.</p>
-        <p>Abra esta atividade no Discord para ver as fichas dos participantes.</p>
-      </div>
-    `;
-  } else {
-    return `
-      <div style="${commonStyles}" id="ficha-container">
-        <h3>Fichas dos Personagens</h3>
-        <p>Carregando dados dos participantes no canal...</p>
-      </div>
-    `;
-  }
+    <div style="padding: 2rem; text-align: center;">
+      <h3>Ficha do Jogador</h3>
+      <p>Em breve...</p>
+    </div>
+  `;
 }
 
 function getStatusPageHTML() {
@@ -155,42 +144,14 @@ function getStatusPageHTML() {
 // (Esta seção permanece IDÊNTICA - Nenhuma mudança aqui)
 
 async function fetchParticipantData() {
-    const container = document.querySelector('#ficha-container');
-    if (!discordSdk || !discordSdk.channelId) {
-        if (container) container.innerHTML += '<p style="color: red;">SDK do Discord não está pronto ou ID do canal é inválido.</p>';
-        return;
-    }
-    
-    try {
-        const { participants } = await discordSdk.commands.getChannel({ channel_id: discordSdk.channelId });
-        
-        if (!participants || participants.length === 0) {
-            container.innerHTML = '<h3>Fichas</h3><p>Nenhum participante encontrado no canal.</p>';
-            return;
-        }
-        
-        let html = '<h3>Participantes no Canal</h3>';
-        html += '<ul style="list-style: none; padding: 0; text-align: left;">';
-        
-        participants.forEach(user => {
-            const avatarUrl = user.avatar 
-                ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
-                : `https://cdn.discordapp.com/embed/avatars/${user.discriminator % 5}.png`;
-
-            html += `
-                <li style="display: flex; align-items: center; margin-bottom: 10px; background: #333; padding: 10px; border-radius: 8px;">
-                    <img src="${avatarUrl}" alt="${user.username}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
-                    <span style="font-weight: bold;">${user.global_name || user.username}</span>
-                </li>
-            `;
-        });
-        html += '</ul>';
-        container.innerHTML = html;
-
-    } catch (err) {
-        console.error("Erro ao buscar participantes:", err);
-        if (container) container.innerHTML = '<h3>Fichas</h3><p style="color: red;">Falha ao carregar dados dos participantes.</p>';
-    }
+  
+  
+    return `
+    <div style="padding: 2rem; text-align: center;">
+      <h3>Ficha do Jogador</h3>
+      <p>Em breve...</p>
+    </div>
+  `;
 }
 
 
