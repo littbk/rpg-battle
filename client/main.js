@@ -420,7 +420,7 @@ async function setupDiscordSdk() {
     scope: [
       "identify", 
       "guilds", 
-      "rpc.voice.read",
+      "rpc.voice.read"
     ], 
   });
 
