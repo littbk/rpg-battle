@@ -9,7 +9,6 @@ let auth;
 let isSdkReady = false;
 let discordSdk = null;
 let DiscordSDK = null;
-const mainChannelId = '1420530344884572271'
 let currentChannelId = ''
 
 // --- VARIÁVEIS DE NAVEGAÇÃO ---
@@ -35,7 +34,6 @@ function initializeApp() {
     isSdkReady = true; 
     fetchBattleQueue(); 
     mockDevelopmentMode();
-    initializeChat(); // ⭐️ NOVO: Inicia o chat em modo 'mock'
   
   } else if (urlParams.has('frame_id')) {
     // --- MODO DISCORD (PRODUÇÃO, DENTRO DO DISCORD) ---
@@ -48,7 +46,6 @@ function initializeApp() {
       appendUserAvatar();
       appendChannelName();
       fetchBattleQueue();
-      initializeChat(); // ⭐️ NOVO: Inicia o chat real
     }).catch((err) => {
       console.error("Erro fatal no setup do SDK:", err);
       appElement.innerHTML = `
@@ -136,7 +133,6 @@ function renderPage(pageName) {
       }
       
       // ⭐️ NOVO: Reinicia o chat na página de Batalha
-      initializeChat();
       break;
 
     case 'ficha':
@@ -238,168 +234,6 @@ async function fetchParticipantData() {
 }
 
 
-// --- ⭐️ NOVAS FUNÇÕES DO CHAT ⭐️ ---
-
-function initializeChat() {
-  const messagesList = document.querySelector('#chat-messages-list');
-  const messageInput = document.querySelector('#chat-message-input');
-  const sendButton = document.querySelector('#chat-send-btn');
-
-  if (!messagesList || !messageInput || !sendButton) {
-    // Isso é normal se estivermos em outra página que não seja 'batalha'
-    // console.log("Elementos do chat não encontrados (provavelmente em outra página).");
-    return;
-  }
-
-  if (import.meta.env.DEV) {
-    // --- MODO DEV: Simula um chat desabilitado ---
-    messagesList.innerHTML = `
-      <div class="chat-message system">
-        <span class="chat-message-content">O chat só funciona quando a atividade é aberta pelo Discord.</span>
-      </div>`;
-    messageInput.value = "Chat desabilitado no modo DEV";
-    messageInput.disabled = true;
-    sendButton.disabled = true;
-  } else {
-    // --- MODO PROD: Ativa o chat real ---
-    messageInput.disabled = false;
-    sendButton.disabled = false;
-    messageInput.value = "";
-    messageInput.placeholder = "Digite sua mensagem...";
-
-    fetchChannelMessages(messagesList);
-    subscribeToChannelMessages(messagesList);
-    setupChatInput(messageInput, sendButton);
-  }
-}
-
-async function fetchChannelMessages(messagesList) {
-  if (!discordSdk || !mainChannelId || !auth) {
-    console.warn("SDK, ChannelID ou Auth não estão prontos para buscar mensagens.");
-    return;
-  }
-  
-  try {
-    // Busca as 7 últimas mensagens
-    const { messages } = await discordSdk.commands.getChannelMessages({
-      channel_id: mainChannelId,
-      limit: 7,
-    });
-    
-    // Limpa a mensagem "Carregando..."
-    messagesList.innerHTML = '';
-    
-    // Renderiza as mensagens (em ordem reversa, da mais antiga para a mais nova)
-    messages.reverse().forEach(message => renderMessage(message, messagesList));
-    
-  } catch (err) {
-    console.error("Erro ao buscar histórico de mensagens:", err);
-    messagesList.innerHTML = `
-      <div class="chat-message system">
-        <span class="chat-message-content" style="color: #f88;">Falha ao carregar histórico: ${err.message}</span>
-      </div>`;
-  }
-}
-
-async function subscribeToChannelMessages(messagesList) {
-  if (!discordSdk) return;
-
-  // Cancela inscrições antigas (se houver)
-  // Usar um handler vazio é uma forma de tentar limpar, mas o SDK pode exigir a referência original
-  // Por segurança, vamos apenas nos inscrever. O SDK deve lidar com sobreposições.
-
-  // Inscreve-se para novas mensagens APENAS no canal atual
-  await discordSdk.commands.subscribe('MESSAGE_CREATE', (evt) => {
-    const message = evt.data.message;
-    // Só renderiza se a mensagem for do canal que estamos vendo
-    if (message.channel_id === mainChannelId) {
-      renderMessage(message, messagesList);
-    }
-  }, { channel_id: mainChannelId });
-
-  console.log("Inscrito para novas mensagens no canal:", mainChannelId);
-}
-
-function setupChatInput(messageInput, sendButton) {
-  // Função para enviar
-  const sendMessage = async () => {
-    const content = messageInput.value;
-    if (content.trim() === "" || !discordSdk) return;
-
-    try {
-      // Desabilita o input enquanto envia
-      messageInput.disabled = true;
-      sendButton.disabled = true;
-
-      await discordSdk.commands.sendChannelMessage({
-        channel_id: mainChannelId,
-        content: content,
-      });
-      
-      // Limpa o input
-      messageInput.value = "";
-
-    } catch (err) {
-      console.error("Erro ao enviar mensagem:", err);
-      // Opcional: mostrar um erro no chat
-    } finally {
-      // Re-habilita o input
-      messageInput.disabled = false;
-      sendButton.disabled = false;
-      messageInput.focus();
-    }
-  };
-
-  // Envia ao clicar no botão
-  sendButton.onclick = sendMessage; // Usa onclick para evitar múltiplos listeners
-
-  // Envia ao pressionar "Enter"
-  messageInput.onkeydown = (e) => { // Usa onkeydown para evitar múltiplos listeners
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-}
-
-function renderMessage(message, messagesList) {
-  if (!auth) { // Checagem de segurança
-    console.warn("Auth não está pronto, não é possível renderizar a mensagem.");
-    return;
-  }
-
-  const messageEl = document.createElement('div');
-  
-  // Verifica se a mensagem é do usuário logado ou de outro
-  const messageType = (message.author.id === auth.user.id) ? 'user-message' : 'other-message';
-  
-  messageEl.classList.add('chat-message', messageType);
-
-  // Adiciona o nome do autor (apenas para mensagens de 'outros')
-  let authorHTML = '';
-  if (messageType === 'other-message') {
-    authorHTML = `<span class="chat-message-author">${message.author.global_name || message.author.username}</span>`;
-  }
-  
-  // Simples sanitização para evitar injeção de HTML
-  const safeContent = message.content
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-
-  messageEl.innerHTML = `
-    ${authorHTML}
-    <span class="chat-message-content">${safeContent}</span>
-  `;
-  
-  messagesList.appendChild(messageEl);
-  
-  // Rola para o final
-  messagesList.scrollTop = messagesList.scrollHeight;
-}
-
-
-// --- FUNÇÕES DE PRODUÇÃO (SDK DO DISCORD) ---
-
 async function setupDiscordSdk() {
   
   // Carrega o SDK
@@ -419,9 +253,7 @@ async function setupDiscordSdk() {
     prompt: "none",
     scope: [
       "identify", 
-      "guilds", 
-      "rpc.voice.read",
-      "rpc"
+      "guilds"
     ], 
   });
 
