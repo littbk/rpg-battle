@@ -375,7 +375,7 @@ async function fetchBattleQueue() {
 function mockDevelopmentMode() {
   const logoImg = document.querySelector('img.logo');
   if (logoImg) {
-    logoImg.src = "https://cdn.discordapp.com/icons/1130587651414696056/a_25e3f65c9a7d63c5f76c7b2e54a09953.webp?size=128";
+    logoImg.src = "https://s2-techtudo.glbimg.com/B66n6Cq7r_h0lcz8afk4hpuDBgI=/0x0:490x455/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_08fbf48bc0524877943fe86e43087e7a/internal_photos/bs/2021/a/B/Z7UYbcRHy3FzrSO9b7Cg/2011-04-20-msn.jpg";
     logoImg.alt = "Avatar do Servidor";
     logoImg.width = 128;
     logoImg.height = 128;
