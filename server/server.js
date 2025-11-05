@@ -1,30 +1,46 @@
+/*
+  ESTE É O SEU `server.js` COMPLETO.
+  Ele agora inclui o discord.js (Bot) e os endpoints da API
+  que o seu `main.js` (Frontend) precisa.
+*/
 import express from "express";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import cors from "cors";
-import pg from 'pg'; // 1. Trocado 'better-sqlite3' por 'pg'
+import pg from 'pg';
+import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js'; // 1. ⭐️ ADICIONADO discord.js
 
 // --- CONFIGURAÇÃO DE AMBIENTE ---
-// Isto só vai carregar o .env em desenvolvimento. Em produção (Render),
-// as variáveis já são injetadas pelo "Environment" do Render.
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: "../.env" });
 }
 
-// --- CONEXÃO COM O BANCO DE DADOS (AGORA POSTGRESQL) ---
-// 2. Removemos toda a lógica de 'path' e 'dbPath'.
-// Usamos Pool em vez de Client, pois é muito melhor para um servidor web
-// (gere múltiplas conexões automaticamente).
+// --- INICIALIZAÇÃO DO BOT (DISCORD.JS) ---
+// 2. ⭐️ CRÍTICO: O seu bot precisa estar logado para as APIs funcionarem.
+const botClient = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates // Necessário para /get-voice-participants
+  ]
+});
+
+// Certifique-se de que DISCORD_BOT_TOKEN está no seu ficheiro .env
+botClient.login(process.env.DISCORD_BOT_TOKEN);
+botClient.once('ready', () => {
+  console.log(`--- Bot ${botClient.user.tag} está online! ---`);
+});
+
+
+// --- CONEXÃO COM O BANCO DE DADOS (POSTGRESQL) ---
 const { Pool } = pg;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    // 3. Necessário para as conexões gratuitas do Render
-    rejectUnauthorized: false 
+    rejectUnauthorized: false
   }
 });
 
-// Teste de conexão opcional
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error("!!! ERRO FATAL AO CONECTAR AO BANCO DE DADOS POSTGRESQL:", err);
@@ -34,23 +50,21 @@ pool.query('SELECT NOW()', (err, res) => {
 });
 
 
+// --- CONFIGURAÇÃO DO SERVIDOR (EXPRESS) ---
 const app = express();
-// 4. O Render fornece a porta via process.env.PORT (geralmente 10000)
-const port = process.env.PORT || 3001; 
+const port = process.env.PORT || 3001;
 
+// 3. ⭐️ CORREÇÃO: express.json() é o correto. Não é preciso body-parser.
 app.use(express.json());
 
 // --- CONFIGURAÇÃO DE CORS (SEGURANÇA) ---
-// 5. Configuração de CORS mais segura, lendo a URL do seu client (Vercel)
-//    a partir das variáveis de ambiente.
 const allowedOrigins = [
-  process.env.CLIENT_URL, // Sua URL do Vercel (ex: https://rpg-battle-psi.vercel.app)
-  'http://localhost:5173'  // Seu client local
+  process.env.CLIENT_URL, // Sua URL do Vercel
+  'http://localhost:5173' // Seu client local
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permite chamadas sem 'origin' (ex: Postman) ou da nossa lista
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -68,15 +82,14 @@ app.get("/", (req, res) => {
 
 // --- ROTAS DA API ---
 
+// (A sua rota /api/token permanece igual)
 app.post("/api/token", async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: 'Código de autorização ausente' });
 
-  // 6. O redirect_uri NÃO PODE ser hardcoded. 
-  //    Deve ser a mesma URL do seu client (Vercel).
   if (!process.env.CLIENT_URL) {
-      console.error("ERRO: CLIENT_URL não está definido nas variáveis de ambiente!");
-      return res.status(500).json({ error: 'Configuração do servidor incompleta.' });
+    console.error("ERRO: CLIENT_URL não está definido nas variáveis de ambiente!");
+    return res.status(500).json({ error: 'Configuração do servidor incompleta.' });
   }
 
   try {
@@ -85,9 +98,9 @@ app.post("/api/token", async (req, res) => {
       client_secret: process.env.DISCORD_CLIENT_SECRET,
       grant_type: "authorization_code",
       code,
-      redirect_uri: process.env.CLIENT_URL // 7. Usando a variável de ambiente
+      redirect_uri: process.env.CLIENT_URL
     });
-    
+
     const response = await fetch(`https://discord.com/api/oauth2/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -109,7 +122,7 @@ app.post("/api/token", async (req, res) => {
   }
 });
 
-
+// (A sua rota /api/get-player-data permanece igual)
 app.get("/api/get-player-data", async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -124,13 +137,10 @@ app.get("/api/get-player-data", async (req, res) => {
     const discordUser = await userResponse.json();
     const discordId = discordUser.id;
 
-    // 8. SINTAXE DE QUERY MUDOU DE SQLITE PARA POSTGRESQL
-    // SQLite: db.prepare('... = ?').get(discordId)
-    // Postgre: pool.query('... = $1', [discordId])
     const query = 'SELECT * FROM players WHERE discord_id = $1';
     const result = await pool.query(query, [discordId]);
-    
-    const playerData = result.rows[0]; // O resultado fica em 'rows'
+
+    const playerData = result.rows[0];
 
     if (playerData) {
       res.json(playerData);
@@ -146,24 +156,135 @@ app.get("/api/get-player-data", async (req, res) => {
 
 app.get("/api/get-battle-queue", async (req, res) => {
   try {
-    
-    // 9. SINTAXE DE QUERY MUDOU
-    const query = 'SELECT * FROM "Batalhas" WHERE id = $1'; // <-- Com aspas, ele procura "Batalhas"
-    const result = await pool.query(query, [1]); // Usando 1 como parâmetro
+
+    // 4. ⭐️ CORREÇÃO: A rota agora usa o channelId vindo do frontend
+    const { channel: channelId } = req.query;
+    if (!channelId) {
+      return res.status(400).json({ error: 'ID do Canal ausente' });
+    }
+
+    // 5. ⭐️ CORREÇÃO: Usamos o [channelId] como parâmetro
+    // (Assumindo que a coluna 'id' na tabela "Batalhas" é o ID do canal)
+    const query = 'SELECT * FROM "Batalhas" WHERE id = $1';
+    const result = await pool.query(query, [channelId]);
 
     const battleData = result.rows[0];
 
     if (battleData && battleData.fila) {
       res.json(battleData);
     } else {
-      res.status(404).json({ error: 'Batalha (id: 1) não encontrada ou fila vazia' });
+      res.status(404).json({ error: `Batalha (id: ${channelId}) não encontrada ou fila vazia` });
     }
   } catch (error) {
     console.error("Erro em /api/get-battle-queue:", error);
     res.status(500).json({ error: 'Erro interno do servidor ao processar fila' });
+    
   }
 });
 
+// --- 6. ⭐️ ADICIONADO: ENDPOINT PARA A PÁGINA DE FICHA ---
+app.get('/api/get-voice-participants', async (req, res) => {
+  try {
+    const { channel: channelId } = req.query;
+    if (!channelId) {
+      return res.status(400).json({ error: 'ID do Canal ausente' });
+    }
+
+    // Usa o Bot (botClient) para encontrar o canal de voz
+    const channel = await botClient.channels.fetch(channelId);
+    if (!channel || !channel.isVoiceBased()) {
+      return res.status(404).json({ error: 'Canal de voz não encontrado' });
+    }
+
+    // Mapeia os membros no canal para o formato que o frontend espera
+    const participants = channel.members.map(member => {
+      return {
+        id: member.user.id,
+        username: member.user.globalName || member.user.username,
+        avatarUrl: member.user.displayAvatarURL({ dynamic: true, size: 128 })
+      };
+    });
+
+    res.json(participants);
+
+  } catch (error) {
+    console.error("Erro em /api/get-voice-participants:", error);
+    res.status(500).json({ error: 'Erro ao buscar participantes' });
+  }
+});
+
+
+// --- 7. ⭐️ ADICIONADO: ENDPOINT PARA CARREGAR O CHAT ---
+app.get('/api/get-chat-messages', async (req, res) => {
+  try {
+    const { channel: channelId } = req.query;
+    if (!channelId) {
+      return res.status(400).json({ error: 'ID do Canal ausente' });
+    }
+
+    // Usa o Bot (botClient) para encontrar o canal de texto
+    const channel = await botClient.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased()) {
+      return res.status(404).json({ error: 'Canal de texto não encontrado' });
+    }
+
+    // Busca as 7 últimas mensagens
+    const messages = await channel.messages.fetch({ limit: 7 });
+
+    // Mapeia as mensagens para um formato JSON simples
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      content: msg.content,
+      author: {
+        id: msg.author.id,
+        username: msg.author.globalName || msg.author.username,
+        avatar: msg.author.displayAvatarURL({ dynamic: true, size: 64 })
+      }
+    }));
+
+    // O frontend renderiza do mais antigo para o mais novo
+    res.json(formattedMessages.reverse());
+
+  } catch (error) {
+    console.error("Erro em /api/get-chat-messages:", error);
+    res.status(500).json({ error: 'Erro ao buscar mensagens' });
+  }
+});
+
+
+// --- 8. ⭐️ ADICIONADO: ENDPOINT PARA ENVIAR MENSAGENS NO CHAT ---
+app.post('/api/send-chat-message', async (req, res) => {
+  try {
+    const { channelId, content, author } = req.body;
+    if (!channelId || !content || !author) {
+      return res.status(400).json({ error: 'Dados ausentes (channelId, content, author)' });
+    }
+
+    // Usa o Bot (botClient) para encontrar o canal de texto
+    const channel = await botClient.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased()) {
+      return res.status(404).json({ error: 'Canal de texto não encontrado' });
+    }
+
+    // 9. ⭐️ MUDANÇA: Usando o EmbedBuilder do discord.js v14
+    const embed = new EmbedBuilder()
+      .setColor(0x5865F2) // Cor do Discord
+      .setAuthor({ name: author.username, iconURL: author.avatar })
+      .setDescription(content);
+
+    // Envia a mensagem no canal de texto como um "Embed"
+    await channel.send({ embeds: [embed] });
+
+    res.status(200).json({ success: true });
+
+  } catch (error) {
+    console.error("Erro em /api/send-chat-message:", error);
+    res.status(500).json({ error: 'Erro ao enviar mensagem' });
+  }
+});
+
+
+// --- INICIALIZAÇÃO DO SERVIDOR ---
 app.listen(port, () => {
   console.log(`Servidor a ouvir na porta ${port}`);
 });
