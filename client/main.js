@@ -493,20 +493,7 @@ async function fetchBattleQueue() {
   const turnOrderContainer = document.querySelector('#turn-order-list');
   if (!turnOrderContainer) return; 
 
-  let channelId;
-  if (import.meta.env.DEV) {
-    channelId = new URLSearchParams(window.location.search).get('channel_id');
-  } else {
-    channelId = currentChannelId; // Usa a var global
-  }
-
-  if (!channelId) {
-    const helpText = import.meta.env.DEV
-      ? `<p style="color:#faa;">ID do Canal não fornecido.<br/>Adicione <strong>?channel_id=12345...</strong> ao seu URL para testar.</p>`
-      : "<p>ID do Canal não encontrado (Erro do SDK).</p>";
-    if (turnOrderContainer) turnOrderContainer.innerHTML = helpText;
-    return;
-  }
+  let channelId = 1
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/get-battle-queue?channel=${channelId}`);

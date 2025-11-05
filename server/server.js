@@ -219,7 +219,7 @@ app.get('/api/get-voice-participants', async (req, res) => {
 // --- 7. ⭐️ ADICIONADO: ENDPOINT PARA CARREGAR O CHAT ---
 app.get('/api/get-chat-messages', async (req, res) => {
   try {
-    debugger
+    
     const { channel: channelId } = req.query;
     if (!channelId) {
       return res.status(400).json({ error: 'ID do Canal ausente' });
